@@ -1,6 +1,6 @@
 -- ==============================================================================
--- PERSONAL JOB APPLICATION TRACKER - SUPABASE DATABASE SCHEMA
--- PostgreSQL & Supabase Compatible
+-- PERSONAL JOB APPLICATION TRACKER - SUPABASE DATABASE SCHEMA (v2.1)
+-- Fully Idempotent, Safe to Re-run, Supports Both UUID & Text String IDs
 -- ==============================================================================
 
 -- 1. Enable Required Extensions
@@ -8,12 +8,12 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ==============================================================================
--- 2. TABLE DEFINITIONS
+-- 2. TABLE DEFINITIONS (Using TEXT for primary/foreign keys for universal compatibility)
 -- ==============================================================================
 
 -- Table: applications (Inti dari setiap lamaran pekerjaan)
 CREATE TABLE IF NOT EXISTS public.applications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   company TEXT NOT NULL,
   position TEXT NOT NULL,
   location TEXT DEFAULT '',
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.applications (
   deadline DATE,
   salary_min NUMERIC,
   salary_max NUMERIC,
-  salary_currency TEXT DEFAULT 'USD',
+  salary_currency TEXT DEFAULT 'IDR',
   status TEXT NOT NULL CHECK (status IN (
     'Wishlist', 'Applied', 'Screening', 'Interview', 'Technical Test', 
     'HR Interview', 'Offer', 'Accepted', 'Rejected', 'Withdrawn', 'Expired'
@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS public.applications (
 
 -- Table: application_events (Riwayat timeline & milestone lamaran)
 CREATE TABLE IF NOT EXISTS public.application_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  application_id TEXT NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   event_type TEXT NOT NULL DEFAULT 'status_change',
@@ -52,8 +52,8 @@ CREATE TABLE IF NOT EXISTS public.application_events (
 
 -- Table: interviews (Jadwal & rincian interview / technical test)
 CREATE TABLE IF NOT EXISTS public.interviews (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  application_id TEXT NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN (
     'HR Interview', 'Technical Interview', 'User Interview', 'Manager Interview', 'Final Interview', 'Other'
   )),
@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS public.interviews (
 
 -- Table: documents (Metadata dokumen seperti CV, Cover Letter, Portofolio)
 CREATE TABLE IF NOT EXISTS public.documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  application_id TEXT NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('CV', 'Cover Letter', 'Job Description', 'Portfolio', 'Certificate', 'Other')),
   file_url TEXT NOT NULL,
@@ -84,11 +84,11 @@ CREATE TABLE IF NOT EXISTS public.documents (
 
 -- Table: notifications (Notifikasi in-app untuk deadline & interview)
 CREATE TABLE IF NOT EXISTS public.notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   type TEXT NOT NULL,
-  application_id UUID REFERENCES public.applications(id) ON DELETE SET NULL,
+  application_id TEXT REFERENCES public.applications(id) ON DELETE SET NULL,
   event_date TIMESTAMPTZ,
   is_read BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -107,10 +107,13 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
   interview_reminder_hours INTEGER NOT NULL DEFAULT 24,
   whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   whatsapp_phone TEXT DEFAULT '',
+  whatsapp_mode TEXT DEFAULT 'click_to_chat',
+  whatsapp_api_key TEXT DEFAULT '',
+  whatsapp_webhook_url TEXT DEFAULT '',
   whatsapp_notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   whatsapp_phone_number TEXT DEFAULT '',
-  whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": false, "status_change": true}'::jsonb,
-  currency_default TEXT NOT NULL DEFAULT 'USD',
+  whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": true, "expired": true, "status_change": true}'::jsonb,
+  currency_default TEXT NOT NULL DEFAULT 'IDR',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -160,10 +163,9 @@ BEFORE UPDATE ON public.user_settings
 FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
 
 -- ==============================================================================
--- 5. ROW LEVEL SECURITY (RLS) POLICIES
+-- 5. ROW LEVEL SECURITY (RLS) POLICIES (Idempotent: Drop first, then create)
 -- ==============================================================================
 
--- Mengaktifkan RLS pada seluruh tabel
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.application_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.interviews ENABLE ROW LEVEL SECURITY;
@@ -171,32 +173,43 @@ ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
--- Policy untuk mode Anon / Single User (Memungkinkan aplikasi web membaca & menulis data dengan anon key)
+-- Applications policy
+DROP POLICY IF EXISTS "Allow public read-write for applications" ON public.applications;
 CREATE POLICY "Allow public read-write for applications" ON public.applications
   FOR ALL TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
+-- Application events policy
+DROP POLICY IF EXISTS "Allow public read-write for application_events" ON public.application_events;
 CREATE POLICY "Allow public read-write for application_events" ON public.application_events
   FOR ALL TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
+-- Interviews policy
+DROP POLICY IF EXISTS "Allow public read-write for interviews" ON public.interviews;
 CREATE POLICY "Allow public read-write for interviews" ON public.interviews
   FOR ALL TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
+-- Documents policy
+DROP POLICY IF EXISTS "Allow public read-write for documents" ON public.documents;
 CREATE POLICY "Allow public read-write for documents" ON public.documents
   FOR ALL TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
+-- Notifications policy
+DROP POLICY IF EXISTS "Allow public read-write for notifications" ON public.notifications;
 CREATE POLICY "Allow public read-write for notifications" ON public.notifications
   FOR ALL TO anon, authenticated
   USING (true)
   WITH CHECK (true);
 
+-- User settings policy
+DROP POLICY IF EXISTS "Allow public read-write for user_settings" ON public.user_settings;
 CREATE POLICY "Allow public read-write for user_settings" ON public.user_settings
   FOR ALL TO anon, authenticated
   USING (true)
@@ -206,23 +219,34 @@ CREATE POLICY "Allow public read-write for user_settings" ON public.user_setting
 -- 6. SUPABASE STORAGE BUCKET (Untuk Menyimpan File CV & Dokumen)
 -- ==============================================================================
 
--- Membuat Storage Bucket 'application-documents' secara publik
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('application-documents', 'application-documents', true)
-ON CONFLICT (id) DO NOTHING;
+-- Buat / Update Storage Bucket 'application-documents' secara publik
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('application-documents', 'application-documents', true, 52428800)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
--- RLS Policy Storage Object (Upload, Read, Delete)
+-- Storage RLS Policy (Drop first, then recreate)
+DROP POLICY IF EXISTS "Allow public storage access" ON storage.objects;
+DROP POLICY IF EXISTS "Public Document Access" ON storage.objects;
+
 CREATE POLICY "Allow public storage access" ON storage.objects
   FOR ALL TO anon, authenticated
   USING (bucket_id = 'application-documents')
   WITH CHECK (bucket_id = 'application-documents');
 
 -- ==============================================================================
--- 7. INITIAL SEED DATA (Opsional - Contoh Data Awal)
+-- 7. INITIAL SEED DATA (Opsional - Default User Settings)
 -- ==============================================================================
 
-INSERT INTO public.user_settings (id, theme, deadline_reminder_days, interview_reminder_hours, currency_default)
-VALUES ('default_user', 'light', 3, 24, 'USD')
+INSERT INTO public.user_settings (
+  id, theme, in_app_notifications, notify_interview, notify_deadline, 
+  notify_followup, notify_expired, deadline_reminder_days, interview_reminder_hours, 
+  whatsapp_enabled, whatsapp_mode, currency_default
+)
+VALUES (
+  'default_user', 'light', true, true, true, 
+  true, true, 3, 24, 
+  true, 'click_to_chat', 'IDR'
+)
 ON CONFLICT (id) DO NOTHING;
 
 -- Selesai! Schema database Supabase siap digunakan.

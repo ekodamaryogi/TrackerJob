@@ -138,6 +138,10 @@ export interface UserSettings {
   interview_reminder_hours?: number;
   whatsapp_enabled?: boolean;
   whatsapp_phone?: string;
+  whatsapp_mode?: 'click_to_chat' | 'webhook_fonnte' | 'webhook_wablas' | 'webhook_custom' | 'meta_cloud_api';
+  whatsapp_webhook_url?: string;
+  whatsapp_api_key?: string;
+  whatsapp_sender_number?: string;
   whatsapp_notifications_enabled?: boolean;
   whatsapp_phone_number?: string;
   whatsapp_notification_types?: {
@@ -145,6 +149,7 @@ export interface UserSettings {
     deadline: boolean;
     followup: boolean;
     expired: boolean;
+    status_change?: boolean;
   };
   supabase_url?: string;
   supabase_anon_key?: string;

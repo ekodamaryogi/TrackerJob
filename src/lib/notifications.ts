@@ -5,18 +5,9 @@ import {
   UserSettings,
 } from '../types';
 import { Storage } from './storage';
+import { WhatsAppService, WhatsAppNotificationPayload as WANotifPayload } from './whatsapp';
 
-export interface WhatsAppNotificationPayload {
-  to: string;
-  template: 'interview_reminder' | 'deadline_reminder' | 'expired_alert' | 'followup_reminder';
-  parameters: {
-    company: string;
-    position: string;
-    date: string;
-    time?: string;
-    link?: string;
-  };
-}
+export type WhatsAppNotificationPayload = WANotifPayload;
 
 export const NotificationService = {
   // Pure generator for fast UI reactive updates
@@ -197,35 +188,12 @@ export const NotificationService = {
   sendWhatsAppNotification: async (
     payload: WhatsAppNotificationPayload
   ): Promise<{ success: boolean; message: string; simulatedPreview?: string }> => {
-    // Generate text message preview
-    let messageText = '';
-    switch (payload.template) {
-      case 'interview_reminder':
-        messageText = `🔔 *Job Tracker Alert: Interview Reminder*\n\nYou have an upcoming interview with *${payload.parameters.company}* for *${payload.parameters.position}*.\n🗓️ *Date:* ${payload.parameters.date}\n⏰ *Time:* ${payload.parameters.time || 'TBA'}${payload.parameters.link ? `\n🔗 *Meeting Link:* ${payload.parameters.link}` : ''}\n\nGood luck! 🚀`;
-        break;
-      case 'deadline_reminder':
-        messageText = `⏳ *Job Tracker Alert: Deadline Approaching*\n\nYour application for *${payload.parameters.position}* at *${payload.parameters.company}* is due on *${payload.parameters.date}*.`;
-        break;
-      case 'expired_alert':
-        messageText = `⚠️ *Job Tracker Alert: Application Expired*\n\nDeadline for *${payload.parameters.position}* at *${payload.parameters.company}* has passed.`;
-        break;
-      case 'followup_reminder':
-        messageText = `📬 *Job Tracker Alert: Follow-up Reminder*\n\nTime to follow up with *${payload.parameters.company}* regarding your application.`;
-        break;
-    }
-
-    // In a live production environment with WhatsApp Cloud API token, this makes a POST to:
-    // https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages
-    console.log('[WhatsApp Notification Dispatch]', {
-      recipient: payload.to,
-      template: payload.template,
-      body: messageText,
-    });
-
+    const settings = Storage.getSettings();
+    const result = await WhatsAppService.sendWhatsAppNotification(payload, settings);
     return {
-      success: true,
-      message: `WhatsApp message prepared for ${payload.to}`,
-      simulatedPreview: messageText,
+      success: result.success,
+      message: result.message,
+      simulatedPreview: result.formattedText,
     };
   },
 };

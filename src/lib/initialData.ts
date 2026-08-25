@@ -14,13 +14,15 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   notify_deadline: true,
   notify_followup: true,
   notify_expired: true,
-  whatsapp_enabled: false,
+  whatsapp_enabled: true,
   whatsapp_phone: '+6281234567890',
+  whatsapp_mode: 'click_to_chat',
   whatsapp_notification_types: {
     interview: true,
     deadline: true,
     followup: true,
     expired: true,
+    status_change: true,
   },
   currency_default: 'USD',
 };

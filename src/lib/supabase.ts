@@ -1,10 +1,18 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  JobApplication,
+  ApplicationEvent,
+  Interview,
+  ApplicationDocument,
+  NotificationItem,
+  UserSettings,
+} from '../types';
 
 let supabaseClientInstance: SupabaseClient | null = null;
 
 export const getSupabaseConfig = () => {
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+  const envUrl = ((import.meta as any).env?.VITE_SUPABASE_URL || '').trim();
+  const envKey = ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '').trim();
 
   // Check custom localStorage override if user entered in settings
   let localUrl = '';
@@ -13,8 +21,8 @@ export const getSupabaseConfig = () => {
     const customConfig = localStorage.getItem('personal_tracker_supabase_config');
     if (customConfig) {
       const parsed = JSON.parse(customConfig);
-      localUrl = parsed.url || '';
-      localKey = parsed.key || '';
+      localUrl = (parsed.url || '').trim();
+      localKey = (parsed.key || '').trim();
     }
   } catch {
     // Ignore parse error
@@ -30,6 +38,21 @@ export const getSupabaseConfig = () => {
   };
 };
 
+export const saveSupabaseConfigToLocal = (url: string, key: string) => {
+  const cleanedUrl = url.trim().replace(/\/+$/, '');
+  const cleanedKey = key.trim();
+  localStorage.setItem(
+    'personal_tracker_supabase_config',
+    JSON.stringify({ url: cleanedUrl, key: cleanedKey })
+  );
+  resetSupabaseClient();
+};
+
+export const clearSupabaseConfigFromLocal = () => {
+  localStorage.removeItem('personal_tracker_supabase_config');
+  resetSupabaseClient();
+};
+
 export const getSupabaseClient = (): SupabaseClient | null => {
   const config = getSupabaseConfig();
   if (!config.isConfigured) {
@@ -38,7 +61,13 @@ export const getSupabaseClient = (): SupabaseClient | null => {
 
   if (!supabaseClientInstance) {
     try {
-      supabaseClientInstance = createClient(config.url, config.key);
+      const cleanUrl = config.url.replace(/\/+$/, '');
+      supabaseClientInstance = createClient(cleanUrl, config.key, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
     } catch (err) {
       console.warn('Could not initialize Supabase client:', err);
       return null;
@@ -52,39 +81,253 @@ export const resetSupabaseClient = () => {
   supabaseClientInstance = null;
 };
 
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  tableCount?: number;
+  bucketAccessible?: boolean;
+  missingTables?: string[];
+}
+
 export const testSupabaseConnection = async (
   url: string,
   key: string
-): Promise<{ success: boolean; message: string }> => {
+): Promise<ConnectionTestResult> => {
   try {
-    if (!url || !key) {
-      return { success: false, message: 'URL and Anon Key must not be empty.' };
-    }
-    const testClient = createClient(url, key);
-    const { error } = await testClient.from('applications').select('id').limit(1);
-    if (error && error.code !== 'PGRST116') {
+    const cleanedUrl = url.trim().replace(/\/+$/, '');
+    const cleanedKey = key.trim();
+
+    if (!cleanedUrl || !cleanedKey) {
       return {
         success: false,
-        message: `Connected to Supabase, but encountered error: ${error.message}. (Ensure tables are created with the provided SQL schema)`,
+        message: 'Project URL dan Anon Public Key tidak boleh kosong.',
       };
     }
-    return { success: true, message: 'Successfully connected to Supabase database!' };
+
+    if (!cleanedUrl.startsWith('https://') && !cleanedUrl.startsWith('http://')) {
+      return {
+        success: false,
+        message: 'Format Project URL salah. Harus dimulai dengan https:// (contoh: https://xyz.supabase.co)',
+      };
+    }
+
+    const testClient = createClient(cleanedUrl, cleanedKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    // Check critical tables
+    const tablesToCheck = ['applications', 'application_events', 'interviews', 'documents', 'notifications', 'user_settings'];
+    const missingTables: string[] = [];
+
+    for (const table of tablesToCheck) {
+      const { error } = await testClient.from(table).select('*').limit(1);
+      if (error) {
+        if (error.code === '42P01' || error.message?.toLowerCase().includes('does not exist')) {
+          missingTables.push(table);
+        } else if (error.code === '42501' || error.message?.toLowerCase().includes('row-level security')) {
+          return {
+            success: false,
+            message: `Koneksi berhasil, namun RLS Policy pada tabel "${table}" memblokir akses anon. Pastikan Section 5 di file supabase_schema.sql sudah dijalankan.`,
+          };
+        }
+      }
+    }
+
+    if (missingTables.length > 0) {
+      return {
+        success: false,
+        missingTables,
+        message: `Terhubung ke Supabase, namun tabel belum dibuat: [${missingTables.join(', ')}]. Silakan jalankan query dari file supabase_schema.sql di SQL Editor Supabase.`,
+      };
+    }
+
+    // Check storage bucket
+    let bucketAccessible = false;
+    try {
+      const { data: buckets, error: bError } = await testClient.storage.listBuckets();
+      if (!bError && buckets) {
+        bucketAccessible = buckets.some((b) => b.name === 'application-documents');
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      success: true,
+      bucketAccessible,
+      message: 'Koneksi ke Supabase berhasil dan seluruh tabel siap digunakan!',
+    };
   } catch (err: any) {
-    return { success: false, message: err?.message || 'Connection failed. Check your credentials.' };
+    return {
+      success: false,
+      message: err?.message || 'Gagal terhubung ke Supabase. Periksa URL dan Anon Key Anda.',
+    };
   }
 };
 
-export const SUPABASE_SQL_SCHEMA = `-- ==========================================
--- Personal Job Application Tracker SQL Schema
--- Compatible with Supabase & PostgreSQL
--- ==========================================
+/**
+ * Upload and sync all local records to Supabase tables
+ */
+export const uploadLocalDataToSupabase = async (data: {
+  applications: JobApplication[];
+  events: ApplicationEvent[];
+  interviews: Interview[];
+  documents: ApplicationDocument[];
+  notifications: NotificationItem[];
+  settings: UserSettings;
+}): Promise<{ success: boolean; count: number; error?: string }> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { success: false, count: 0, error: 'Supabase client is not configured.' };
+  }
 
--- Enable UUID extension
+  try {
+    let totalCount = 0;
+
+    // 1. Applications
+    if (data.applications && data.applications.length > 0) {
+      const { error: appErr } = await supabase
+        .from('applications')
+        .upsert(data.applications, { onConflict: 'id' });
+      if (appErr) throw new Error(`Applications sync error: ${appErr.message}`);
+      totalCount += data.applications.length;
+    }
+
+    // 2. Events
+    if (data.events && data.events.length > 0) {
+      const { error: evtErr } = await supabase
+        .from('application_events')
+        .upsert(data.events, { onConflict: 'id' });
+      if (evtErr) throw new Error(`Events sync error: ${evtErr.message}`);
+      totalCount += data.events.length;
+    }
+
+    // 3. Interviews
+    if (data.interviews && data.interviews.length > 0) {
+      const { error: intErr } = await supabase
+        .from('interviews')
+        .upsert(data.interviews, { onConflict: 'id' });
+      if (intErr) throw new Error(`Interviews sync error: ${intErr.message}`);
+      totalCount += data.interviews.length;
+    }
+
+    // 4. Documents
+    if (data.documents && data.documents.length > 0) {
+      const { error: docErr } = await supabase
+        .from('documents')
+        .upsert(data.documents, { onConflict: 'id' });
+      if (docErr) throw new Error(`Documents sync error: ${docErr.message}`);
+      totalCount += data.documents.length;
+    }
+
+    // 5. Notifications
+    if (data.notifications && data.notifications.length > 0) {
+      const { error: notifErr } = await supabase
+        .from('notifications')
+        .upsert(data.notifications, { onConflict: 'id' });
+      if (notifErr) throw new Error(`Notifications sync error: ${notifErr.message}`);
+      totalCount += data.notifications.length;
+    }
+
+    // 6. User Settings
+    if (data.settings) {
+      const { error: setErr } = await supabase
+        .from('user_settings')
+        .upsert(
+          {
+            id: 'default_user',
+            theme: data.settings.theme,
+            in_app_notifications: data.settings.in_app_notifications,
+            notify_interview: data.settings.notify_interview,
+            notify_deadline: data.settings.notify_deadline,
+            notify_followup: data.settings.notify_followup,
+            notify_expired: data.settings.notify_expired,
+            deadline_reminder_days: data.settings.deadline_reminder_days,
+            interview_reminder_hours: data.settings.interview_reminder_hours,
+            whatsapp_enabled: data.settings.whatsapp_enabled,
+            whatsapp_phone: data.settings.whatsapp_phone,
+            whatsapp_mode: data.settings.whatsapp_mode,
+            whatsapp_api_key: data.settings.whatsapp_api_key,
+            whatsapp_webhook_url: data.settings.whatsapp_webhook_url,
+            whatsapp_notifications_enabled: data.settings.whatsapp_notifications_enabled,
+            whatsapp_phone_number: data.settings.whatsapp_phone_number,
+            whatsapp_notification_types: data.settings.whatsapp_notification_types,
+            currency_default: data.settings.currency_default,
+          },
+          { onConflict: 'id' }
+        );
+      if (setErr) console.warn('Settings sync warning:', setErr.message);
+    }
+
+    return { success: true, count: totalCount };
+  } catch (err: any) {
+    return { success: false, count: 0, error: err?.message || 'Sync to Supabase failed' };
+  }
+};
+
+/**
+ * Pull all data from Supabase into memory
+ */
+export const pullAllDataFromSupabase = async (): Promise<{
+  success: boolean;
+  data?: {
+    applications: JobApplication[];
+    events: ApplicationEvent[];
+    interviews: Interview[];
+    documents: ApplicationDocument[];
+    notifications: NotificationItem[];
+    settings?: UserSettings;
+  };
+  error?: string;
+}> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const [appRes, evtRes, intRes, docRes, notifRes, setRes] = await Promise.all([
+      supabase.from('applications').select('*').order('created_at', { ascending: false }),
+      supabase.from('application_events').select('*').order('event_date', { ascending: false }),
+      supabase.from('interviews').select('*').order('scheduled_at', { ascending: true }),
+      supabase.from('documents').select('*').order('uploaded_at', { ascending: false }),
+      supabase.from('notifications').select('*').order('created_at', { ascending: false }),
+      supabase.from('user_settings').select('*').eq('id', 'default_user').maybeSingle(),
+    ]);
+
+    if (appRes.error) throw new Error(`Applications fetch error: ${appRes.error.message}`);
+    if (evtRes.error) throw new Error(`Events fetch error: ${evtRes.error.message}`);
+    if (intRes.error) throw new Error(`Interviews fetch error: ${intRes.error.message}`);
+    if (docRes.error) throw new Error(`Documents fetch error: ${docRes.error.message}`);
+    if (notifRes.error) throw new Error(`Notifications fetch error: ${notifRes.error.message}`);
+
+    return {
+      success: true,
+      data: {
+        applications: appRes.data || [],
+        events: evtRes.data || [],
+        interviews: intRes.data || [],
+        documents: docRes.data || [],
+        notifications: notifRes.data || [],
+        settings: setRes.data || undefined,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to pull data from Supabase' };
+  }
+};
+
+export const SUPABASE_SQL_SCHEMA = `-- ==============================================================================
+-- PERSONAL JOB APPLICATION TRACKER - SUPABASE DATABASE SCHEMA (v2.1)
+-- Safe to run repeatedly (Idempotent) & Supports both custom and UUID IDs
+-- ==============================================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. Applications Table
-CREATE TABLE IF NOT EXISTS applications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- 1. Table: applications
+CREATE TABLE IF NOT EXISTS public.applications (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   company TEXT NOT NULL,
   position TEXT NOT NULL,
   location TEXT DEFAULT '',
@@ -95,7 +338,7 @@ CREATE TABLE IF NOT EXISTS applications (
   deadline DATE,
   salary_min NUMERIC,
   salary_max NUMERIC,
-  salary_currency TEXT DEFAULT 'USD',
+  salary_currency TEXT DEFAULT 'IDR',
   status TEXT NOT NULL CHECK (status IN (
     'Wishlist', 'Applied', 'Screening', 'Interview', 'Technical Test', 
     'HR Interview', 'Offer', 'Accepted', 'Rejected', 'Withdrawn', 'Expired'
@@ -110,16 +353,10 @@ CREATE TABLE IF NOT EXISTS applications (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes for Applications
-CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
-CREATE INDEX IF NOT EXISTS idx_applications_company ON applications(company);
-CREATE INDEX IF NOT EXISTS idx_applications_deadline ON applications(deadline);
-CREATE INDEX IF NOT EXISTS idx_applications_created_at ON applications(created_at DESC);
-
--- 2. Application Events / Timeline Table
-CREATE TABLE IF NOT EXISTS application_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+-- 2. Table: application_events
+CREATE TABLE IF NOT EXISTS public.application_events (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  application_id TEXT NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
   event_type TEXT NOT NULL DEFAULT 'status_change',
@@ -127,13 +364,10 @@ CREATE TABLE IF NOT EXISTS application_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_events_application_id ON application_events(application_id);
-CREATE INDEX IF NOT EXISTS idx_events_date ON application_events(event_date DESC);
-
--- 3. Interviews Table
-CREATE TABLE IF NOT EXISTS interviews (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+-- 3. Table: interviews
+CREATE TABLE IF NOT EXISTS public.interviews (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  application_id TEXT NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN (
     'HR Interview', 'Technical Interview', 'User Interview', 'Manager Interview', 'Final Interview', 'Other'
   )),
@@ -149,13 +383,10 @@ CREATE TABLE IF NOT EXISTS interviews (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON interviews(application_id);
-CREATE INDEX IF NOT EXISTS idx_interviews_scheduled_at ON interviews(scheduled_at);
-
--- 4. Documents Table
-CREATE TABLE IF NOT EXISTS documents (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+-- 4. Table: documents
+CREATE TABLE IF NOT EXISTS public.documents (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  application_id TEXT NOT NULL REFERENCES public.applications(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   type TEXT NOT NULL CHECK (type IN ('CV', 'Cover Letter', 'Job Description', 'Portfolio', 'Certificate', 'Other')),
   file_url TEXT NOT NULL,
@@ -165,46 +396,110 @@ CREATE TABLE IF NOT EXISTS documents (
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_documents_application_id ON documents(application_id);
-
--- 5. Notifications Table
-CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+-- 5. Table: notifications
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   type TEXT NOT NULL,
-  application_id UUID REFERENCES applications(id) ON DELETE SET NULL,
+  application_id TEXT REFERENCES public.applications(id) ON DELETE SET NULL,
   event_date TIMESTAMPTZ,
   is_read BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+-- 6. Table: user_settings
+CREATE TABLE IF NOT EXISTS public.user_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default_user',
+  theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark', 'system')),
+  in_app_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+  notify_interview BOOLEAN NOT NULL DEFAULT TRUE,
+  notify_deadline BOOLEAN NOT NULL DEFAULT TRUE,
+  notify_followup BOOLEAN NOT NULL DEFAULT TRUE,
+  notify_expired BOOLEAN NOT NULL DEFAULT FALSE,
+  deadline_reminder_days INTEGER NOT NULL DEFAULT 3,
+  interview_reminder_hours INTEGER NOT NULL DEFAULT 24,
+  whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  whatsapp_phone TEXT DEFAULT '',
+  whatsapp_mode TEXT DEFAULT 'click_to_chat',
+  whatsapp_api_key TEXT DEFAULT '',
+  whatsapp_webhook_url TEXT DEFAULT '',
+  whatsapp_notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  whatsapp_phone_number TEXT DEFAULT '',
+  whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": true, "expired": true, "status_change": true}'::jsonb,
+  currency_default TEXT NOT NULL DEFAULT 'IDR',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- 6. Storage Bucket for Documents (Run in Supabase Storage UI or via SQL)
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('application-documents', 'application-documents', true)
-ON CONFLICT (id) DO NOTHING;
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_applications_status ON public.applications(status);
+CREATE INDEX IF NOT EXISTS idx_applications_company ON public.applications(company);
+CREATE INDEX IF NOT EXISTS idx_applications_deadline ON public.applications(deadline);
+CREATE INDEX IF NOT EXISTS idx_applications_created_at ON public.applications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_application_id ON public.application_events(application_id);
+CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON public.interviews(application_id);
+CREATE INDEX IF NOT EXISTS idx_documents_application_id ON public.documents(application_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
 
--- Storage RLS Policy (Allow public reads and uploads for single user setup)
-CREATE POLICY "Public Document Access" ON storage.objects
-FOR ALL USING (bucket_id = 'application-documents')
-WITH CHECK (bucket_id = 'application-documents');
-
--- Trigger to auto-update updated_at on applications
-CREATE OR REPLACE FUNCTION update_modified_column()
+-- Triggers for updated_at
+CREATE OR REPLACE FUNCTION public.update_modified_column()
 RETURNS TRIGGER AS $$
 BEGIN
    NEW.updated_at = NOW();
    RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_applications_modtime ON public.applications;
 CREATE TRIGGER update_applications_modtime
-BEFORE UPDATE ON applications
-FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+BEFORE UPDATE ON public.applications
+FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
 
+DROP TRIGGER IF EXISTS update_interviews_modtime ON public.interviews;
 CREATE TRIGGER update_interviews_modtime
-BEFORE UPDATE ON interviews
-FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+BEFORE UPDATE ON public.interviews
+FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+DROP TRIGGER IF EXISTS update_settings_modtime ON public.user_settings;
+CREATE TRIGGER update_settings_modtime
+BEFORE UPDATE ON public.user_settings
+FOR EACH ROW EXECUTE FUNCTION public.update_modified_column();
+
+-- Row Level Security (RLS) Policies
+ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.application_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.interviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read-write for applications" ON public.applications;
+CREATE POLICY "Allow public read-write for applications" ON public.applications FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for application_events" ON public.application_events;
+CREATE POLICY "Allow public read-write for application_events" ON public.application_events FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for interviews" ON public.interviews;
+CREATE POLICY "Allow public read-write for interviews" ON public.interviews FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for documents" ON public.documents;
+CREATE POLICY "Allow public read-write for documents" ON public.documents FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for notifications" ON public.notifications;
+CREATE POLICY "Allow public read-write for notifications" ON public.notifications FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read-write for user_settings" ON public.user_settings;
+CREATE POLICY "Allow public read-write for user_settings" ON public.user_settings FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- Storage Bucket & Storage Policy
+INSERT INTO storage.buckets (id, name, public, file_size_limit) 
+VALUES ('application-documents', 'application-documents', true, 52428800)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Allow public storage access" ON storage.objects;
+DROP POLICY IF EXISTS "Public Document Access" ON storage.objects;
+CREATE POLICY "Allow public storage access" ON storage.objects
+  FOR ALL TO anon, authenticated
+  USING (bucket_id = 'application-documents')
+  WITH CHECK (bucket_id = 'application-documents');
 `;
