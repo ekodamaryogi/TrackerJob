@@ -10,7 +10,7 @@ import {
 } from './types';
 import { Storage } from './lib/storage';
 import { NotificationService } from './lib/notifications';
-import { Sidebar } from './components/layout/Sidebar';
+import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { Navbar } from './components/layout/Navbar';
 import { MobileNav } from './components/layout/MobileNav';
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -19,6 +19,7 @@ import { PipelineView } from './components/pipeline/PipelineView';
 import { CalendarView } from './components/calendar/CalendarView';
 import { DocumentsView } from './components/documents/DocumentsView';
 import { SettingsView } from './components/settings/SettingsView';
+import { NotificationsModal } from './components/notifications/NotificationsModal';
 import { AddEditApplicationModal } from './components/applications/AddEditApplicationModal';
 import { ApplicationDetailModal } from './components/applications/ApplicationDetailModal';
 import { AddEditInterviewModal } from './components/interviews/AddEditInterviewModal';
@@ -33,6 +34,10 @@ function MainApp() {
 
   // Primary State
   const [currentView, setCurrentView] = useState<ActiveView>('dashboard');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [documents, setDocuments] = useState<ApplicationDocument[]>([]);
@@ -68,6 +73,34 @@ function MainApp() {
     message: '',
     onConfirm: async () => {},
   });
+
+  // Theme synchronization with document element
+  useEffect(() => {
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const applyTheme = (themeValue: 'light' | 'dark' | 'system') => {
+      const isDark =
+        themeValue === 'dark' ||
+        (themeValue === 'system' && mediaQuery.matches);
+      if (isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    applyTheme(settings.theme || 'light');
+
+    const handleSystemThemeChange = () => {
+      if (settings.theme === 'system') {
+        applyTheme('system');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  }, [settings.theme]);
 
   // Load all initial data from storage
   const loadData = useCallback(async () => {
@@ -354,54 +387,88 @@ function MainApp() {
     }
   };
 
+  const handleSelectTab = (tab: NavTab) => {
+    if (tab === 'notifications') {
+      setIsNotificationsModalOpen(true);
+    } else {
+      setCurrentView(tab as ActiveView);
+    }
+  };
+
+  const handleToggleTheme = async (themeMode: 'light' | 'dark' | 'system') => {
+    await handleUpdateSettings({ theme: themeMode });
+    showToast(`Theme set to ${themeMode}`, 'info');
+  };
+
+  // Filtered applications based on global search
+  const filteredApplications = applications.filter((app) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      app.company.toLowerCase().includes(q) ||
+      app.position.toLowerCase().includes(q) ||
+      (app.location || '').toLowerCase().includes(q) ||
+      (app.tags || []).some((t) => t.toLowerCase().includes(q)) ||
+      (app.notes || '').toLowerCase().includes(q)
+    );
+  });
+
+  const activeApplicationsCount = applications.filter(
+    (a) => !['Rejected', 'Withdrawn', 'Expired', 'Accepted'].includes(a.status)
+  ).length;
+
+  const upcomingInterviewsCount = interviews.filter((i) => {
+    try {
+      return new Date(i.scheduled_at).getTime() >= new Date().getTime() - 24 * 60 * 60 * 1000;
+    } catch {
+      return false;
+    }
+  }).length;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col md:flex-row antialiased selection:bg-cyan-500 selection:text-white cyber-grid-bg">
       {/* Desktop Navigation Sidebar */}
       <Sidebar
         activeTab={currentView}
-        onTabChange={(tab) => setCurrentView(tab as ActiveView)}
-        applicationsCount={applications.length}
-        interviewsCount={interviews.length}
-        documentsCount={documents.length}
+        onSelectTab={handleSelectTab}
+        onOpenAddModal={() => {
+          setEditingApp(null);
+          setIsAddAppModalOpen(true);
+        }}
+        unreadNotifsCount={notifications.length}
+        activeApplicationsCount={activeApplicationsCount}
+        upcomingInterviewsCount={upcomingInterviewsCount}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
         {/* Header Navbar */}
         <Navbar
-          notifications={notifications}
-          onDismissNotification={handleDismissNotification}
-          onNotificationClick={handleNotificationClick}
+          activeTab={currentView}
+          onSelectTab={handleSelectTab}
           onOpenAddModal={() => {
             setEditingApp(null);
             setIsAddAppModalOpen(true);
           }}
-          activeTabTitle={
-            currentView === 'dashboard'
-              ? 'Dashboard'
-              : currentView === 'applications'
-              ? 'Applications'
-              : currentView === 'pipeline'
-              ? 'Kanban Pipeline'
-              : currentView === 'calendar'
-              ? 'Calendar & Interviews'
-              : currentView === 'documents'
-              ? 'Documents Vault'
-              : 'Settings & Data'
-          }
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          unreadNotifsCount={notifications.length}
+          theme={settings.theme || 'light'}
+          onToggleTheme={handleToggleTheme}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
 
         {/* View Router Body */}
         <main className="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin shadow-[0_0_12px_rgba(6,182,212,0.4)]" />
             </div>
           ) : (
             <>
               {currentView === 'dashboard' && (
                 <DashboardView
-                  applications={applications}
+                  applications={filteredApplications}
                   interviews={interviews}
                   onSelectApplication={(app) => setSelectedAppForDetail(app)}
                   onOpenAddModal={() => {
@@ -415,7 +482,7 @@ function MainApp() {
 
               {currentView === 'applications' && (
                 <ApplicationsListView
-                  applications={applications}
+                  applications={filteredApplications}
                   onSelectApplication={(app) => setSelectedAppForDetail(app)}
                   onEditApplication={(app) => {
                     setEditingApp(app);
@@ -431,7 +498,7 @@ function MainApp() {
 
               {currentView === 'pipeline' && (
                 <PipelineView
-                  applications={applications}
+                  applications={filteredApplications}
                   interviews={interviews}
                   onSelectApplication={(app) => setSelectedAppForDetail(app)}
                   onUpdateStatus={handleUpdateStatus}
@@ -481,10 +548,30 @@ function MainApp() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar & Mobile Drawer */}
       <MobileNav
         activeTab={currentView}
-        onTabChange={(tab) => setCurrentView(tab as ActiveView)}
+        onSelectTab={handleSelectTab}
+        onOpenAddModal={() => {
+          setEditingApp(null);
+          setIsAddAppModalOpen(true);
+        }}
+        unreadNotifsCount={notifications.length}
+        isMobileMenuOpen={isMobileMenuOpen}
+        onCloseMobileMenu={() => setIsMobileMenuOpen(false)}
+      />
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        notifications={notifications}
+        onDismissNotification={handleDismissNotification}
+        onNotificationClick={handleNotificationClick}
+        onClearAll={() => {
+          setNotifications([]);
+          showToast('All notifications cleared', 'info');
+        }}
       />
 
       {/* MODALS */}

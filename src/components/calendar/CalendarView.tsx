@@ -145,7 +145,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <button
             id="btn-calendar-schedule-interview"
             onClick={onScheduleInterview}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-xs hover:shadow-[0_0_12px_rgba(6,182,212,0.35)] flex items-center gap-1.5 cursor-pointer shrink-0 border border-cyan-400/30 transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Schedule Interview</span>
@@ -161,7 +161,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div
                 key={d}
-                className="py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400"
+                className="py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono"
               >
                 {d}
               </div>
@@ -192,19 +192,19 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   onClick={() => setSelectedDay(dateStr)}
                   className={`h-20 sm:h-24 p-1.5 sm:p-2 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? 'border-indigo-600 ring-2 ring-indigo-500/30 bg-indigo-50/40 dark:bg-indigo-950/30'
+                      ? 'border-cyan-500 ring-2 ring-cyan-500/30 bg-cyan-50/40 dark:bg-cyan-950/30 shadow-[0_0_12px_rgba(6,182,212,0.2)]'
                       : isToday
-                      ? 'border-indigo-400 bg-indigo-50/20 dark:bg-slate-800/60'
-                      : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/80 dark:hover:bg-slate-800'
+                      ? 'border-cyan-400/80 bg-cyan-50/20 dark:bg-slate-800/80 ring-1 ring-cyan-400/30'
+                      : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/80 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                      className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center font-mono ${
                         isToday
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-gradient-to-r from-cyan-500 to-indigo-600 text-white shadow-[0_0_8px_#00f0ff]'
                           : isSelected
-                          ? 'text-indigo-600 dark:text-indigo-400'
+                          ? 'text-cyan-600 dark:text-cyan-400 font-black'
                           : 'text-slate-700 dark:text-slate-300'
                       }`}
                     >
@@ -214,10 +214,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     {/* Quick indicator badges */}
                     <div className="flex items-center gap-1">
                       {hasInterviews && (
-                        <div className="w-2 h-2 rounded-full bg-amber-500" title="Interview" />
+                        <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b]" title="Interview" />
                       )}
                       {hasDeadlines && (
-                        <div className="w-2 h-2 rounded-full bg-rose-500" title="Deadline" />
+                        <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]" title="Deadline" />
                       )}
                     </div>
                   </div>
@@ -225,14 +225,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   {/* Day Content Badges */}
                   <div className="space-y-1 overflow-hidden">
                     {hasInterviews && (
-                      <div className="text-[10px] font-semibold truncate bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 px-1 py-0.5 rounded">
+                      <div className="text-[10px] font-semibold truncate bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 px-1 py-0.5 rounded border border-amber-300 dark:border-amber-800/60">
                         {dayData.interviews.length === 1
                           ? `${applications.find((a) => a.id === dayData.interviews[0].application_id)?.company || 'Interview'}`
                           : `${dayData.interviews.length} Interviews`}
                       </div>
                     )}
                     {hasDeadlines && (
-                      <div className="text-[10px] font-semibold truncate bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 px-1 py-0.5 rounded">
+                      <div className="text-[10px] font-semibold truncate bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 px-1 py-0.5 rounded border border-rose-300 dark:border-rose-800/60">
                         {dayData.deadlines.length} Deadline{dayData.deadlines.length > 1 ? 's' : ''}
                       </div>
                     )}
@@ -245,21 +245,42 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
         {/* Selected Day Event Drawer / Detail Panel */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4 flex flex-col">
-          <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Schedule For
-            </span>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              {selectedDay ? formatDate(selectedDay) : 'Select a date'}
-            </h3>
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-3 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                [TIMELINE_DATE]
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {selectedDay ? formatDate(selectedDay) : 'Select a date'}
+              </h3>
+            </div>
+            {selectedDay && (
+              <button
+                onClick={onScheduleInterview}
+                className="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-semibold flex items-center gap-1 border border-cyan-500/20 transition-colors"
+                title="Add interview on this date"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
+            )}
           </div>
 
           {/* List of interviews on this day */}
           <div className="space-y-3 flex-1 overflow-y-auto max-h-[60vh]">
             {selectedDateEvents.interviews.length === 0 &&
             selectedDateEvents.deadlines.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                No events or deadlines on this day.
+              <div className="py-12 text-center space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+                  <CalendarIcon className="w-5 h-5" />
+                </div>
+                <p className="text-xs text-slate-400">No events or deadlines scheduled on this day.</p>
+                <button
+                  onClick={onScheduleInterview}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Schedule Event
+                </button>
               </div>
             ) : null}
 
