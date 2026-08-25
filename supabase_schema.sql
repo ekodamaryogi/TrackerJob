@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Table: user_settings (Preferensi user, notifikasi WhatsApp, & tema)
+-- Table: user_settings (Preferensi user, konfigurasi Fonnte API Token & WhatsApp Penerima)
 CREATE TABLE IF NOT EXISTS public.user_settings (
   id TEXT PRIMARY KEY DEFAULT 'default_user',
   theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark', 'system')),
@@ -105,17 +105,25 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
   notify_expired BOOLEAN NOT NULL DEFAULT FALSE,
   deadline_reminder_days INTEGER NOT NULL DEFAULT 3,
   interview_reminder_hours INTEGER NOT NULL DEFAULT 24,
-  whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  whatsapp_phone TEXT DEFAULT '',
-  whatsapp_mode TEXT DEFAULT 'click_to_chat',
-  whatsapp_api_key TEXT DEFAULT '',
+  -- Konfigurasi WhatsApp Fonnte Gateway Cloud
+  whatsapp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  whatsapp_phone TEXT DEFAULT '', -- Nomor WhatsApp Penerima (+62... / 08...)
+  whatsapp_api_key TEXT DEFAULT '', -- Fonnte API Token (dari fonnte.com)
+  whatsapp_mode TEXT DEFAULT 'webhook_fonnte',
   whatsapp_webhook_url TEXT DEFAULT '',
-  whatsapp_notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  whatsapp_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   whatsapp_phone_number TEXT DEFAULT '',
   whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": true, "expired": true, "status_change": true}'::jsonb,
   currency_default TEXT NOT NULL DEFAULT 'IDR',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Migrasi aman (ALTER TABLE) untuk database Supabase yang sudah pernah dibuat sebelumnya
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_enabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT DEFAULT '';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_api_key TEXT DEFAULT '';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_mode TEXT DEFAULT 'webhook_fonnte';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": true, "expired": true, "status_change": true}'::jsonb;
 
 -- ==============================================================================
 -- 3. INDEXES (Untuk performa query cepat)
@@ -234,7 +242,104 @@ CREATE POLICY "Allow public storage access" ON storage.objects
   WITH CHECK (bucket_id = 'application-documents');
 
 -- ==============================================================================
--- 7. INITIAL SEED DATA (Opsional - Default User Settings)
+-- 7. OTOMATISASI WHATSAPP 24/7 DI SUPABASE CLOUD (pg_net & pg_cron)
+-- ==============================================================================
+-- Fitur ini memungkinkan Supabase mengirim pesan WhatsApp Fonnte secara otomatis
+-- di background 24/7 TANPA PERLU MEMBUKA BROWSER ATAU WEB SAMA SEKALI.
+
+-- 7.1 Aktifkan Ekstensi pg_net (untuk HTTP Request ke API Fonnte)
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+-- 7.2 Fungsi Mengirim Pesan ke API Fonnte dari Database Supabase
+CREATE OR REPLACE FUNCTION public.send_fonnte_wa(
+  p_phone TEXT,
+  p_message TEXT,
+  p_token TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_request_id BIGINT;
+  v_clean_phone TEXT;
+BEGIN
+  IF p_token IS NULL OR p_token = '' OR p_phone IS NULL OR p_phone = '' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Token atau nomor HP kosong');
+  END IF;
+
+  -- Normalisasi nomor HP (08xx -> 628xx)
+  v_clean_phone := REGEXP_REPLACE(p_phone, '[^0-9]', '', 'g');
+  IF v_clean_phone LIKE '08%' THEN
+    v_clean_phone := '62' || SUBSTRING(v_clean_phone FROM 2);
+  END IF;
+
+  -- Kirim HTTP POST langsung dari Supabase ke server Fonnte
+  SELECT net.http_post(
+    url := 'https://api.fonnte.com/send',
+    headers := jsonb_build_object(
+      'Authorization', p_token,
+      'Content-Type', 'application/x-www-form-urlencoded'
+    ),
+    body := 'target=' || v_clean_phone || '&message=' || url_encode(p_message)
+  ) INTO v_request_id;
+
+  RETURN jsonb_build_object('success', true, 'request_id', v_request_id, 'target', v_clean_phone);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 7.3 Helper Function untuk URL Encode
+CREATE OR REPLACE FUNCTION public.url_encode(p_data TEXT)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+    p_data,
+    ' ', '%20'),
+    E'\n', '%0A'),
+    '&', '%26'),
+    '=', '%3D'),
+    '#', '%23');
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- 7.4 Fungsi Pengecekan Pengingat Harian (Jadwal Interview & Deadline)
+CREATE OR REPLACE FUNCTION public.cron_check_and_send_wa_reminders()
+RETURNS VOID AS $$
+DECLARE
+  v_settings RECORD;
+  v_interview RECORD;
+  v_msg TEXT;
+BEGIN
+  -- Ambil konfigurasi user dari database
+  SELECT * INTO v_settings FROM public.user_settings WHERE id = 'default_user' LIMIT 1;
+  
+  IF v_settings.whatsapp_enabled IS NOT TRUE OR v_settings.whatsapp_api_key = '' OR v_settings.whatsapp_phone = '' THEN
+    RETURN;
+  END IF;
+
+  -- 1. Cek Jadwal Interview dalam 24 Jam ke depan
+  FOR v_interview IN
+    SELECT i.*, a.company, a.position 
+    FROM public.interviews i
+    JOIN public.applications a ON a.id = i.application_id
+    WHERE i.scheduled_at >= NOW() 
+      AND i.scheduled_at <= NOW() + INTERVAL '24 hours'
+      AND i.status = 'scheduled'
+  LOOP
+    v_msg := '🔔 *REMINDER INTERVIEW (JOB TRACKER)*' || E'\n\n' ||
+             'Halo! Anda memiliki jadwal interview besok:' || E'\n' ||
+             '🏢 *Perusahaan:* ' || v_interview.company || E'\n' ||
+             '💼 *Posisi:* ' || v_interview.position || E'\n' ||
+             '📅 *Waktu:* ' || TO_CHAR(v_interview.scheduled_at, 'DD Mon YYYY, HH24:MI') || ' WIB' || E'\n' ||
+             '📍 *Tipe/Lokasi:* ' || COALESCE(v_interview.location, 'Online/Remote') || E'\n\n' ||
+             'Semoga sukses interview-nya! 🚀';
+             
+    PERFORM public.send_fonnte_wa(v_settings.whatsapp_phone, v_msg, v_settings.whatsapp_api_key);
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ==============================================================================
+-- 8. INITIAL SEED DATA (Default User Settings)
 -- ==============================================================================
 
 INSERT INTO public.user_settings (
@@ -245,8 +350,8 @@ INSERT INTO public.user_settings (
 VALUES (
   'default_user', 'light', true, true, true, 
   true, true, 3, 24, 
-  true, 'click_to_chat', 'IDR'
+  true, 'webhook_fonnte', 'IDR'
 )
 ON CONFLICT (id) DO NOTHING;
 
--- Selesai! Schema database Supabase siap digunakan.
+-- Selesai! Schema database Supabase & Otomasi Fonnte siap digunakan.

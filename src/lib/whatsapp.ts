@@ -317,155 +317,75 @@ export const WhatsAppService = {
 
     const waUrl = generateWhatsAppUrl(cleanPhone, text);
 
-    // 2. Dispatch based on configured Mode
-    if (mode === 'webhook_fonnte' && settings.whatsapp_api_key) {
-      try {
-        const formData = new FormData();
-        formData.append('target', cleanPhone);
-        formData.append('message', text);
+    // 2. Fonnte WhatsApp API Gateway
+    const fonnteToken = settings.whatsapp_api_key?.trim();
 
-        const response = await fetch('https://api.fonnte.com/send', {
-          method: 'POST',
-          headers: {
-            Authorization: settings.whatsapp_api_key.trim(),
-          },
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (response.ok && data.status) {
-          return {
-            success: true,
-            message: `Notifikasi WhatsApp berhasil dikirim ke ${cleanPhone} via Fonnte Gateway.`,
-            mode: 'webhook_fonnte',
-            formattedText: text,
-            waUrl,
-            rawResponse: data,
-          };
-        } else {
-          return {
-            success: false,
-            message: `Gagal mengirim via Fonnte: ${data.reason || data.message || 'Token tidak valid'}`,
-            mode: 'webhook_fonnte',
-            formattedText: text,
-            waUrl,
-            error: data.reason || 'Fonnte error',
-            rawResponse: data,
-          };
-        }
-      } catch (err: any) {
-        return {
-          success: false,
-          message: `Koneksi ke Fonnte API gagal: ${err.message}. Silakan gunakan WhatsApp Direct.`,
-          mode: 'webhook_fonnte',
-          formattedText: text,
-          waUrl,
-          error: err.message,
-        };
-      }
+    if (!fonnteToken) {
+      return {
+        success: false,
+        message: 'Token Fonnte belum diisi. Masukkan API Token Fonnte Anda di menu Settings > Notifications & WhatsApp.',
+        mode: 'fonnte',
+        formattedText: text,
+        waUrl,
+        error: 'Token Fonnte kosong',
+      };
     }
 
-    if (mode === 'webhook_wablas' && settings.whatsapp_api_key) {
-      try {
-        const endpoint = settings.whatsapp_webhook_url?.trim() || 'https://kudus.wablas.com';
-        const url = `${endpoint.replace(/\/$/, '')}/api/send-message`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: settings.whatsapp_api_key.trim(),
-          },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            message: text,
-          }),
-        });
-
-        const data = await response.json();
-        if (response.ok && (data.status === true || data.status === 'success' || data.code === 200)) {
-          return {
-            success: true,
-            message: `Notifikasi WhatsApp berhasil dikirim via Wablas Gateway ke ${cleanPhone}.`,
-            mode: 'webhook_wablas',
-            formattedText: text,
-            waUrl,
-            rawResponse: data,
-          };
-        } else {
-          return {
-            success: false,
-            message: `Gagal mengirim via Wablas: ${data.message || 'Error response'}`,
-            mode: 'webhook_wablas',
-            formattedText: text,
-            waUrl,
-            error: data.message,
-            rawResponse: data,
-          };
-        }
-      } catch (err: any) {
-        return {
-          success: false,
-          message: `Koneksi Wablas gagal: ${err.message}`,
-          mode: 'webhook_wablas',
-          formattedText: text,
-          waUrl,
-          error: err.message,
-        };
-      }
+    if (!cleanPhone) {
+      return {
+        success: false,
+        message: 'Nomor WhatsApp penerima belum diisi atau tidak valid.',
+        mode: 'fonnte',
+        formattedText: text,
+        waUrl,
+        error: 'Nomor telepon kosong',
+      };
     }
 
-    if (mode === 'webhook_custom' && settings.whatsapp_webhook_url) {
-      try {
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        if (settings.whatsapp_api_key) {
-          headers['Authorization'] = `Bearer ${settings.whatsapp_api_key.trim()}`;
-        }
+    try {
+      const formData = new FormData();
+      formData.append('target', cleanPhone);
+      formData.append('message', text);
 
-        const response = await fetch(settings.whatsapp_webhook_url.trim(), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            to: cleanPhone,
-            message: text,
-            template: payload.template,
-            parameters: payload.parameters,
-            timestamp: new Date().toISOString(),
-          }),
-        });
+      const response = await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        headers: {
+          Authorization: fonnteToken,
+        },
+        body: formData,
+      });
 
-        const data = await response.text();
+      const data = await response.json();
+      if (response.ok && data.status) {
         return {
-          success: response.ok,
-          message: response.ok
-            ? `Webhook custom berhasil dipanggil.`
-            : `Webhook merespons status ${response.status}: ${data}`,
-          mode: 'webhook_custom',
+          success: true,
+          message: `Notifikasi WhatsApp berhasil dikirim ke ${cleanPhone} via Fonnte Gateway.`,
+          mode: 'fonnte',
           formattedText: text,
           waUrl,
           rawResponse: data,
         };
-      } catch (err: any) {
+      } else {
+        const errorReason = data.reason || data.message || 'Token Fonnte tidak valid atau perangkat WhatsApp offline';
         return {
           success: false,
-          message: `Gagal memanggil custom webhook: ${err.message}`,
-          mode: 'webhook_custom',
+          message: `Gagal mengirim via Fonnte: ${errorReason}`,
+          mode: 'fonnte',
           formattedText: text,
           waUrl,
-          error: err.message,
+          error: errorReason,
+          rawResponse: data,
         };
       }
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Koneksi ke Fonnte API gagal: ${err.message}.`,
+        mode: 'fonnte',
+        formattedText: text,
+        waUrl,
+        error: err.message,
+      };
     }
-
-    // Default mode: Click to Chat (wa.me)
-    return {
-      success: true,
-      message: `Link WhatsApp telah dibuat dan siap dibuka.`,
-      mode: 'click_to_chat',
-      formattedText: text,
-      waUrl,
-    };
   },
 };

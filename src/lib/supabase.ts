@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 6. Table: user_settings
+-- 6. Table: user_settings (Preferensi sistem, Fonnte API Token & WhatsApp Penerima)
 CREATE TABLE IF NOT EXISTS public.user_settings (
   id TEXT PRIMARY KEY DEFAULT 'default_user',
   theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark', 'system')),
@@ -419,17 +419,25 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
   notify_expired BOOLEAN NOT NULL DEFAULT FALSE,
   deadline_reminder_days INTEGER NOT NULL DEFAULT 3,
   interview_reminder_hours INTEGER NOT NULL DEFAULT 24,
-  whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  whatsapp_phone TEXT DEFAULT '',
-  whatsapp_mode TEXT DEFAULT 'click_to_chat',
-  whatsapp_api_key TEXT DEFAULT '',
+  -- Konfigurasi WhatsApp Fonnte Gateway Cloud
+  whatsapp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  whatsapp_phone TEXT DEFAULT '', -- Nomor WhatsApp Penerima (+62... / 08...)
+  whatsapp_api_key TEXT DEFAULT '', -- Fonnte API Token (dari fonnte.com)
+  whatsapp_mode TEXT DEFAULT 'webhook_fonnte',
   whatsapp_webhook_url TEXT DEFAULT '',
-  whatsapp_notifications_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  whatsapp_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   whatsapp_phone_number TEXT DEFAULT '',
   whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": true, "expired": true, "status_change": true}'::jsonb,
   currency_default TEXT NOT NULL DEFAULT 'IDR',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent column migrations for existing user_settings table
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_enabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT DEFAULT '';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_api_key TEXT DEFAULT '';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_mode TEXT DEFAULT 'webhook_fonnte';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS whatsapp_notification_types JSONB DEFAULT '{"interview": true, "deadline": true, "followup": true, "expired": true, "status_change": true}'::jsonb;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_applications_status ON public.applications(status);
@@ -502,4 +510,54 @@ CREATE POLICY "Allow public storage access" ON storage.objects
   FOR ALL TO anon, authenticated
   USING (bucket_id = 'application-documents')
   WITH CHECK (bucket_id = 'application-documents');
+
+-- Ekstensi pg_net & Otomatisasi Notifikasi WhatsApp Fonnte Latar Belakang (24/7 di Cloud)
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+CREATE OR REPLACE FUNCTION public.send_fonnte_wa(
+  p_phone TEXT,
+  p_message TEXT,
+  p_token TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_request_id BIGINT;
+  v_clean_phone TEXT;
+BEGIN
+  IF p_token IS NULL OR p_token = '' OR p_phone IS NULL OR p_phone = '' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Token atau nomor HP kosong');
+  END IF;
+
+  v_clean_phone := REGEXP_REPLACE(p_phone, '[^0-9]', '', 'g');
+  IF v_clean_phone LIKE '08%' THEN
+    v_clean_phone := '62' || SUBSTRING(v_clean_phone FROM 2);
+  END IF;
+
+  SELECT net.http_post(
+    url := 'https://api.fonnte.com/send',
+    headers := jsonb_build_object(
+      'Authorization', p_token,
+      'Content-Type', 'application/x-www-form-urlencoded'
+    ),
+    body := 'target=' || v_clean_phone || '&message=' || url_encode(p_message)
+  ) INTO v_request_id;
+
+  RETURN jsonb_build_object('success', true, 'request_id', v_request_id, 'target', v_clean_phone);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false, 'error', SQLERRM);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.url_encode(p_data TEXT)
+RETURNS TEXT AS $$
+BEGIN
+  RETURN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+    p_data,
+    ' ', '%20'),
+    E'\n', '%0A'),
+    '&', '%26'),
+    '=', '%3D'),
+    '#', '%23');
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
 `;

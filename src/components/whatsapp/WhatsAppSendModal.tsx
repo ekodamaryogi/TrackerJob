@@ -196,18 +196,12 @@ export const WhatsAppSendModal: React.FC<WhatsAppSendModalProps> = ({
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 {title}
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                  {mode === 'webhook_fonnte'
-                    ? 'Fonnte Gateway'
-                    : mode === 'webhook_wablas'
-                    ? 'Wablas Gateway'
-                    : mode === 'webhook_custom'
-                    ? 'Custom Webhook'
-                    : 'Direct WhatsApp'}
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded-full bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-cyan-500" /> Fonnte Gateway
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Preview pesan, atur nomor penerima, dan kirim pesan via WhatsApp
+                Preview pesan, sesuaikan nomor penerima, dan kirim via API Fonnte
               </p>
             </div>
           </div>
@@ -326,19 +320,17 @@ export const WhatsAppSendModal: React.FC<WhatsAppSendModalProps> = ({
               type="button"
               onClick={handleSendViaGateway}
               disabled={isSending || !phoneNumber.trim()}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs hover:shadow-[0_0_12px_rgba(16,185,129,0.35)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-xs hover:shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {isSending ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Mengirim...</span>
+                  <span>Mengirim via Fonnte...</span>
                 </>
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5" />
-                  <span>
-                    {mode === 'click_to_chat' ? 'Kirim via WhatsApp' : 'Kirim via Gateway'}
-                  </span>
+                  <span>Kirim via Fonnte</span>
                 </>
               )}
             </button>

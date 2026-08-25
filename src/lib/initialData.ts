@@ -29,9 +29,9 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   whatsapp_enabled: true,
   whatsapp_phone: envPhone || '+6281234567890',
   whatsapp_phone_number: envPhone || '+6281234567890',
-  whatsapp_mode: (envMode as any) || (envFonnteKey ? 'webhook_fonnte' : 'click_to_chat'),
+  whatsapp_mode: 'webhook_fonnte',
   whatsapp_api_key: envFonnteKey || '',
-  whatsapp_webhook_url: envWebhook || '',
+  whatsapp_webhook_url: '',
   whatsapp_notification_types: {
     interview: true,
     deadline: true,

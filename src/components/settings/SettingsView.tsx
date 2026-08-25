@@ -23,6 +23,9 @@ import {
   Code2,
   Copy,
   Check,
+  Eye,
+  EyeOff,
+  Save,
 } from 'lucide-react';
 import { UserSettings, JobApplication, Interview, ApplicationDocument, ApplicationEvent } from '../../types';
 import { exportToJSON, exportToCSV, importFromJSON } from '../../lib/exportImport';
@@ -75,11 +78,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [interviewHours, setInterviewHours] = useState(settings.interview_reminder_hours || 24);
   const [whatsappEnabled, setWhatsappEnabled] = useState(settings.whatsapp_enabled ?? true);
   const [whatsappPhone, setWhatsappPhone] = useState(settings.whatsapp_phone || '+6281234567890');
-  const [whatsappMode, setWhatsappMode] = useState<
-    'click_to_chat' | 'webhook_fonnte' | 'webhook_wablas' | 'webhook_custom' | 'meta_cloud_api'
-  >(settings.whatsapp_mode || 'click_to_chat');
   const [whatsappApiKey, setWhatsappApiKey] = useState(settings.whatsapp_api_key || '');
-  const [whatsappWebhookUrl, setWhatsappWebhookUrl] = useState(settings.whatsapp_webhook_url || '');
+  const [showApiKey, setShowApiKey] = useState(false);
   const [whatsappNotifTypes, setWhatsappNotifTypes] = useState({
     interview: settings.whatsapp_notification_types?.interview ?? true,
     deadline: settings.whatsapp_notification_types?.deadline ?? true,
@@ -216,12 +216,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         whatsapp_notifications_enabled: whatsappEnabled,
         whatsapp_phone: whatsappPhone.trim(),
         whatsapp_phone_number: whatsappPhone.trim(),
-        whatsapp_mode: whatsappMode,
+        whatsapp_mode: 'webhook_fonnte',
         whatsapp_api_key: whatsappApiKey.trim(),
-        whatsapp_webhook_url: whatsappWebhookUrl.trim(),
+        whatsapp_webhook_url: '',
         whatsapp_notification_types: whatsappNotifTypes,
       });
-      onShowToast('Pengaturan Notifikasi & WhatsApp berhasil disimpan!', 'success');
+      onShowToast('Pengaturan Fonnte WhatsApp berhasil disimpan ke Supabase Cloud & Lokal!', 'success');
     } catch {
       onShowToast('Gagal menyimpan pengaturan', 'error');
     } finally {
@@ -411,18 +411,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
-          {/* WhatsApp Notification Integration Card */}
+          {/* WhatsApp Notification Integration Card (Fonnte API Gateway) */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-emerald-500" /> Integrasi Notifikasi WhatsApp
-                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                    Live
+                  <Smartphone className="w-4 h-4 text-emerald-500" /> Integrasi Fonnte WhatsApp Gateway
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-cyan-500" /> Cloud Synced
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Kirimkan pengingat jadwal interview, update status, dan alert deadline langsung ke nomor WhatsApp Anda.
+                  Kirimkan pengingat jadwal interview, alert deadline, dan perubahan status lamaran otomatis via API Fonnte.
                 </p>
               </div>
 
@@ -438,11 +438,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             {whatsappEnabled && (
-              <div className="space-y-6 pt-2">
+              <div className="space-y-5 pt-1">
+                {/* Cloud Sync Reassurance Box */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-500/10 via-emerald-500/10 to-transparent border border-cyan-500/20 text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-bold text-cyan-950 dark:text-cyan-200">
+                      Tersimpan Langsung di Supabase Cloud (Multi-Browser & Multi-Device)
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Nomor WhatsApp dan Token Fonnte cukup diisi <strong>satu kali</strong> di halaman ini. Pengaturan otomatis tersimpan di database Supabase Anda, sehingga tidak perlu input ulang saat membuka web di browser lain, HP, ataupun mengatur environment variables di Vercel.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Recipient Phone Number */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-                    Nomor WhatsApp Penerima Notifikasi (Format Internasional / 08...)
+                    Nomor WhatsApp Penerima (Format 08... atau +62...)
                   </label>
                   <div className="relative">
                     <input
@@ -452,7 +465,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       placeholder="+6281234567890 atau 081234567890"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     />
-                    <div className="absolute right-3 top-2.5 flex items-center gap-2">
+                    <div className="absolute right-3 top-2 flex items-center gap-2">
                       <button
                         type="button"
                         onClick={handleOpenTestModal}
@@ -463,158 +476,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Format otomatis dinormalisasi ke kode negara (contoh: <code>081234567890</code> otomatis menjadi <code>6281234567890</code>).
+                    Format otomatis dinormalisasi (contoh: <code>081234567890</code> otomatis dikirim ke <code>6281234567890</code>).
                   </p>
                 </div>
 
-                {/* Integration Mode Cards */}
+                {/* Fonnte API Token */}
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-                    Metode Integrasi Pengiriman WhatsApp
-                  </label>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {/* Mode 1: Click to Chat (wa.me) */}
-                    <div
-                      onClick={() => setWhatsappMode('click_to_chat')}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                        whatsappMode === 'click_to_chat'
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/30'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'
-                      }`}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-cyan-500" /> Fonnte API Token
+                    </label>
+                    <a
+                      href="https://fonnte.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <ExternalLink className="w-3.5 h-3.5 text-emerald-500" /> Direct (wa.me)
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                          Gratis & Instan
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Membuka WhatsApp Web/App langsung dengan pesan terformat rapi. Tanpa perlu backend atau token API.
-                      </p>
-                    </div>
-
-                    {/* Mode 2: Fonnte Gateway */}
-                    <div
-                      onClick={() => setWhatsappMode('webhook_fonnte')}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                        whatsappMode === 'webhook_fonnte'
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/30'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-cyan-500" /> Fonnte API Gateway
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 font-bold">
-                          Otomatis (ID)
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Kirim otomatis di background melalui API Fonnte Indonesia. Cukup masukkan API Token dari fonnte.com.
-                      </p>
-                    </div>
-
-                    {/* Mode 3: Custom Webhook / Wablas */}
-                    <div
-                      onClick={() => setWhatsappMode('webhook_custom')}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                        whatsappMode === 'webhook_custom'
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/30'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <Globe className="w-3.5 h-3.5 text-indigo-500" /> Custom Webhook
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">
-                          Custom Bot
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                        Kirim payload JSON ke endpoint server/bot WhatsApp buatan Anda sendiri (Node.js, Baileys, Wablas, dll).
-                      </p>
-                    </div>
+                      Dapatkan Token di fonnte.com <ExternalLink className="w-3 h-3" />
+                    </a>
                   </div>
-                </div>
-
-                {/* Conditional Inputs for Fonnte / Webhook */}
-                {whatsappMode === 'webhook_fonnte' && (
-                  <div className="p-4 rounded-xl bg-cyan-50/40 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/60 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Key className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                        <h4 className="text-xs font-bold text-cyan-950 dark:text-cyan-200">
-                          Fonnte API Token
-                        </h4>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300 font-semibold flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-cyan-500" /> Cloud & Multi-Browser Synced
-                      </span>
-                    </div>
+                  <div className="relative">
                     <input
-                      type="password"
+                      type={showApiKey ? 'text' : 'password'}
                       value={whatsappApiKey}
                       onChange={(e) => setWhatsappApiKey(e.target.value)}
                       placeholder="Masukkan Token Fonnte (contoh: aB1cD2eF3gH4iJ5kL6...)"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono outline-none focus:border-cyan-500"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 pr-10"
                     />
-                    <div className="space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                      <p>
-                        Dapatkan token gratis di{' '}
-                        <a
-                          href="https://fonnte.com"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline text-cyan-600 dark:text-cyan-400 font-semibold"
-                        >
-                          fonnte.com
-                        </a>{' '}
-                        setelah scan QR WhatsApp.
-                      </p>
-                      <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-cyan-200/60 dark:border-cyan-800/40 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
-                        <p className="font-semibold text-cyan-900 dark:text-cyan-200 flex items-center gap-1">
-                          <Info className="w-3 h-3 text-cyan-500" /> Agar aktif di semua browser & perangkat tanpa input ulang:
-                        </p>
-                        <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
-                          <li><strong>Cara A (Supabase Cloud):</strong> Cukup hubungkan Supabase di tab sebelah, token Fonnte otomatis tersimpan di tabel <code>user_settings</code> dan langsung termuat di browser lain.</li>
-                          <li><strong>Cara B (.env / Vercel):</strong> Tambahkan <code>VITE_FONNTE_API_KEY="token_anda"</code> di file <code>.env</code> atau Dashboard Vercel.</li>
-                        </ul>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                )}
-
-                {whatsappMode === 'webhook_custom' && (
-                  <div className="p-4 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      <h4 className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                        Custom Webhook URL & Secret
-                      </h4>
-                    </div>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={whatsappWebhookUrl}
-                        onChange={(e) => setWhatsappWebhookUrl(e.target.value)}
-                        placeholder="https://api.yourdomain.com/webhook/whatsapp"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono outline-none focus:border-indigo-500"
-                      />
-                      <input
-                        type="password"
-                        value={whatsappApiKey}
-                        onChange={(e) => setWhatsappApiKey(e.target.value)}
-                        placeholder="Bearer Token / Secret Key (Opsional)"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono outline-none focus:border-indigo-500"
-                      />
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 {/* Event Trigger Toggles */}
                 <div>
@@ -684,7 +581,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </div>
                 </div>
 
-                {/* Collapsible Interactive Setup Guide (README) */}
+                {/* Collapsible Interactive Setup Guide (Fonnte 3 Langkah) */}
                 <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
                   <button
                     type="button"
@@ -692,70 +589,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     className="w-full p-3.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-emerald-500" />
-                      <span>📖 Baca README & Panduan Integrasi WhatsApp Lengkap</span>
+                      <BookOpen className="w-4 h-4 text-cyan-500" />
+                      <span>📖 Panduan 3 Langkah Menghubungkan Fonnte WhatsApp</span>
                     </div>
                     {showGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </button>
 
                   {showGuide && (
-                    <div className="p-4 space-y-4 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
-                      <div className="space-y-2">
-                        <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>1. Metode Direct Click-to-Chat (wa.me)</span>
-                        </h4>
-                        <p className="leading-relaxed">
-                          Metode ini 100% gratis, langsung aktif tanpa setup backend/server. Saat notifikasi dipicu atau tombol WhatsApp ditekan, sistem membuat URL terenkripsi <code>https://wa.me/&lt;nomor&gt;?text=...</code> yang langsung membuka WhatsApp Web atau WhatsApp Mobile dengan pesan siap kirim.
-                        </p>
-                      </div>
-
-                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>2. Metode Otomatis Fonnte Gateway (Indonesia)</span>
-                        </h4>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li>Daftar akun gratis di <a href="https://fonnte.com" target="_blank" rel="noreferrer" className="underline font-semibold text-emerald-600">fonnte.com</a></li>
-                          <li>Scan QR code dengan WhatsApp di menu Device Fonnte</li>
-                          <li>Salin API Token dari dashboard Fonnte dan tempelkan pada kolom <strong>Fonnte API Token</strong> di atas</li>
-                          <li>Pesan akan terkirim otomatis di background tanpa perlu membuka tab WhatsApp</li>
-                        </ol>
-                      </div>
-
-                      <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>3. Metode Custom Webhook (Node.js / Python / Baileys)</span>
-                        </h4>
-                        <p className="leading-relaxed">
-                          Jika Anda memiliki server bot WhatsApp sendiri (menggunakan Baileys / WPPConnect / WhatsApp HTTP API), aplikasi akan mengirimkan HTTP POST JSON dengan format:
-                        </p>
-                        <div className="relative bg-slate-950 text-slate-200 p-3 rounded-lg font-mono text-[11px] overflow-x-auto">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleCopyCode(
-                                `{\n  "to": "6281234567890",\n  "message": "*REMINDER INTERVIEW*...",\n  "template": "interview_reminder",\n  "parameters": {\n    "company": "GoTo",\n    "position": "Data Analyst",\n    "date": "2026-08-26",\n    "time": "10:00 WIB"\n  }\n}`,
-                                'webhook-json'
-                              )
-                            }
-                            className="absolute right-2 top-2 p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
-                            title="Copy JSON Schema"
+                    <div className="p-4 space-y-3 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+                      <ol className="list-decimal list-inside space-y-2 leading-relaxed">
+                        <li>
+                          <strong>Daftar Akun Gratis di Fonnte:</strong> Buka{' '}
+                          <a
+                            href="https://fonnte.com"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline text-cyan-600 font-semibold"
                           >
-                            {copiedCode === 'webhook-json' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                          </button>
-                          <pre>
-{`{
-  "to": "6281234567890",
-  "message": "*REMINDER INTERVIEW*...",
-  "template": "interview_reminder",
-  "parameters": {
-    "company": "GoTo",
-    "position": "Data Analyst",
-    "date": "2026-08-26",
-    "time": "10:00 WIB"
-  }
-}`}
-                          </pre>
-                        </div>
+                            fonnte.com
+                          </a>{' '}
+                          dan buat akun baru.
+                        </li>
+                        <li>
+                          <strong>Hubungkan WhatsApp (Device):</strong> Buka menu <em>Device</em> di dashboard Fonnte, lalu scan QR Code menggunakan aplikasi WhatsApp di HP Anda.
+                        </li>
+                        <li>
+                          <strong>Salin Token API:</strong> Copy token API yang tertera pada device Anda, lalu tempelkan ke kolom <strong>Fonnte API Token</strong> di atas dan klik <strong>Simpan Pengaturan</strong>.
+                        </li>
+                      </ol>
+                      <div className="p-2.5 rounded-lg bg-cyan-50/70 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 text-[11px] text-cyan-900 dark:text-cyan-200">
+                        ✅ Selesai! Pesan pengingat jadwal interview dan status lamaran akan otomatis terkirim ke WhatsApp Anda di background tanpa perlu membuka tab tambahan.
                       </div>
                     </div>
                   )}
@@ -777,9 +640,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs hover:shadow-[0_0_12px_rgba(16,185,129,0.35)] transition-all cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs hover:shadow-[0_0_12px_rgba(16,185,129,0.35)] transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                {isSaving ? 'Menyimpan...' : 'Simpan Pengaturan WhatsApp'}
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menyimpan ke Cloud...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Simpan Pengaturan WhatsApp & Notifikasi</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

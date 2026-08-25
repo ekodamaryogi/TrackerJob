@@ -634,7 +634,7 @@ export const Storage = {
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase.from('user_settings').upsert(
+        const { error } = await supabase.from('user_settings').upsert(
           {
             id: 'default_user',
             theme: updated.theme,
@@ -647,9 +647,9 @@ export const Storage = {
             interview_reminder_hours: updated.interview_reminder_hours,
             whatsapp_enabled: updated.whatsapp_enabled,
             whatsapp_phone: updated.whatsapp_phone,
-            whatsapp_mode: updated.whatsapp_mode,
+            whatsapp_mode: updated.whatsapp_mode || 'webhook_fonnte',
             whatsapp_api_key: updated.whatsapp_api_key,
-            whatsapp_webhook_url: updated.whatsapp_webhook_url,
+            whatsapp_webhook_url: updated.whatsapp_webhook_url || '',
             whatsapp_notifications_enabled: updated.whatsapp_notifications_enabled,
             whatsapp_phone_number: updated.whatsapp_phone_number,
             whatsapp_notification_types: updated.whatsapp_notification_types,
@@ -658,6 +658,11 @@ export const Storage = {
           },
           { onConflict: 'id' }
         );
+        if (error) {
+          console.warn('Supabase sync user_settings warning:', error.message);
+        } else {
+          console.info('Supabase sync user_settings success');
+        }
       } catch (err) {
         console.warn('Supabase sync user_settings error:', err);
       }
