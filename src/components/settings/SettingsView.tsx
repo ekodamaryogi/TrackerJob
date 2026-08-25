@@ -545,11 +545,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {/* Conditional Inputs for Fonnte / Webhook */}
                 {whatsappMode === 'webhook_fonnte' && (
                   <div className="p-4 rounded-xl bg-cyan-50/40 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/60 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Key className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      <h4 className="text-xs font-bold text-cyan-950 dark:text-cyan-200">
-                        Fonnte API Token
-                      </h4>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Key className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                        <h4 className="text-xs font-bold text-cyan-950 dark:text-cyan-200">
+                          Fonnte API Token
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300 font-semibold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-cyan-500" /> Cloud & Multi-Browser Synced
+                      </span>
                     </div>
                     <input
                       type="password"
@@ -558,18 +563,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       placeholder="Masukkan Token Fonnte (contoh: aB1cD2eF3gH4iJ5kL6...)"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono outline-none focus:border-cyan-500"
                     />
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Dapatkan token gratis di{' '}
-                      <a
-                        href="https://fonnte.com"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline text-cyan-600 dark:text-cyan-400 font-semibold"
-                      >
-                        fonnte.com
-                      </a>{' '}
-                      setelah scan QR perangkat WhatsApp Anda.
-                    </p>
+                    <div className="space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      <p>
+                        Dapatkan token gratis di{' '}
+                        <a
+                          href="https://fonnte.com"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline text-cyan-600 dark:text-cyan-400 font-semibold"
+                        >
+                          fonnte.com
+                        </a>{' '}
+                        setelah scan QR WhatsApp.
+                      </p>
+                      <div className="p-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-cyan-200/60 dark:border-cyan-800/40 text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+                        <p className="font-semibold text-cyan-900 dark:text-cyan-200 flex items-center gap-1">
+                          <Info className="w-3 h-3 text-cyan-500" /> Agar aktif di semua browser & perangkat tanpa input ulang:
+                        </p>
+                        <ul className="list-disc pl-4 space-y-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                          <li><strong>Cara A (Supabase Cloud):</strong> Cukup hubungkan Supabase di tab sebelah, token Fonnte otomatis tersimpan di tabel <code>user_settings</code> dan langsung termuat di browser lain.</li>
+                          <li><strong>Cara B (.env / Vercel):</strong> Tambahkan <code>VITE_FONNTE_API_KEY="token_anda"</code> di file <code>.env</code> atau Dashboard Vercel.</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 )}
 

@@ -128,7 +128,7 @@ Schema di `supabase_schema.sql` sudah otomatis mendaftarkan bucket `application-
 
 ### 🌟 Opsi 1: Deploy ke Vercel (Otomatis & Permanen untuk Semua Pengunjung)
 
-Gunakan cara ini saat men-deploy aplikasi ke [Vercel](https://vercel.com):
+Gunakan cara ini saat men-deploy aplikasi ke [Vercel](https://vercel.com) agar database Supabase & integrasi Fonnte/WhatsApp aktif di semua browser & perangkat:
 
 #### Cara A: Melalui Dashboard Vercel (Import GitHub)
 1. Push repository proyek ini ke akun GitHub Anda.
@@ -139,22 +139,23 @@ Gunakan cara ini saat men-deploy aplikasi ke [Vercel](https://vercel.com):
    - **Framework Preset**: `Vite`
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
-6. Buka dropdown **Environment Variables**, tambahkan 2 variabel berikut:
-   - **Name**: `VITE_SUPABASE_URL`  
-     **Value**: Masukkan Project URL Supabase Anda (misal: `https://abcdefghijklmnop.supabase.co`)
-   - **Name**: `VITE_SUPABASE_ANON_KEY`  
-     **Value**: Masukkan Anon Public Key Supabase Anda (`eyJhbGciOiJI...`)
+6. Buka dropdown **Environment Variables**, tambahkan variabel berikut:
+   - `VITE_SUPABASE_URL` = Masukkan Project URL Supabase Anda (misal: `https://abcdefghijklmnop.supabase.co`)
+   - `VITE_SUPABASE_ANON_KEY` = Masukkan Anon Public Key Supabase Anda (`eyJhbGciOiJI...`)
+   - *(Opsional untuk WhatsApp Global)* `VITE_FONNTE_API_KEY` = Masukkan token Fonnte Anda (`aB1cD2...`)
+   - *(Opsional untuk WhatsApp Global)* `VITE_WHATSAPP_PHONE` = Masukkan nomor WA default (`081234567890`)
 7. Klik tombol **Deploy**.
 8. Setelah proses build selesai (sekitar 30 detik), buka URL Vercel Anda (`https://nama-proyek.vercel.app`).
-9. **Selesai!** Aplikasi di domain Vercel Anda sekarang otomatis terhubung ke database Supabase untuk semua pengunjung di perangkat manapun.
+9. **Selesai!** Aplikasi di domain Vercel Anda sekarang otomatis terhubung ke database Supabase dan integrasi WhatsApp untuk semua pengunjung di browser manapun tanpa perlu setup manual lagi.
 
 #### Cara B: Jika Project Sudah Terlanjur Di-deploy ke Vercel (Update Environment Variables)
 Jika Anda sudah memiliki project yang berjalan di Vercel:
 1. Buka project Anda di dashboard Vercel.
 2. Masuk ke tab **Settings** (di menu atas project Vercel) > pilih **Environment Variables** di sidebar kiri.
-3. Tambahkan:
+3. Tambahkan variabel yang diinginkan:
    - `VITE_SUPABASE_URL` = URL Project Supabase Anda
    - `VITE_SUPABASE_ANON_KEY` = Anon Public Key Supabase Anda
+   - `VITE_FONNTE_API_KEY` = Token Fonnte Anda (Opsional)
    - Centang opsi: **Production**, **Preview**, dan **Development**.
 4. Klik **Save**.
 5. ⚠️ **PENTING (Trigger Re-deploy):** Karena Vite membaca variabel `VITE_` pada waktu build (*build time*), Anda harus melakukan re-deploy:
@@ -173,10 +174,12 @@ Untuk menjalankan aplikasi di komputer lokal (`localhost:3000` / `npm run dev`):
    ```bash
    cp .env.example .env
    ```
-2. Buka file `.env` dan masukkan kredensial Supabase Anda:
+2. Buka file `.env` dan masukkan kredensial Supabase & Fonnte Anda:
    ```env
    VITE_SUPABASE_URL="https://YOUR_PROJECT_ID.supabase.co"
    VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_PUBLIC_KEY"
+   VITE_FONNTE_API_KEY="YOUR_FONNTE_API_KEY"
+   VITE_WHATSAPP_PHONE="081234567890"
    ```
 3. Restart development server:
    ```bash
@@ -185,9 +188,10 @@ Untuk menjalankan aplikasi di komputer lokal (`localhost:3000` / `npm run dev`):
 
 ---
 
-### 📱 Opsi 3: Melalui Menu Pengaturan UI (Hanya Berlaku di Browser Lokal Tersebut)
+### 📱 Opsi 3: Melalui Menu Pengaturan UI & Supabase Cloud Sync
 
-Gunakan cara ini untuk pengujian cepat di satu perangkat tanpa mengubah environment variables:
+Jika Anda memasukkan token Fonnte di tab **Settings > Notifications & WhatsApp**:
+- **Otomatis Tersinkronisasi ke Cloud:** Saat Supabase terhubung, token Fonnte & nomor WA akan otomatis disimpan ke tabel `user_settings` di Supabase. Ketika Anda membuka web tracker di browser lain atau HP, aplikasi akan langsung memuat token tersebut dari database Supabase tanpa perlu memasukkan ulang.
 1. Buka aplikasi Job Application Tracker di browser.
 2. Klik tab **Settings** (⚙️) pada navigasi atas > pilih sub-tab **Supabase Cloud**.
 3. Masukkan **Supabase Project URL** dan **Supabase Anon Public API Key**.

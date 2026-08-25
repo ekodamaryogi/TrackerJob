@@ -584,7 +584,42 @@ export const Storage = {
 
   // ================= USER SETTINGS =================
   getSettings: (): UserSettings => {
-    return getLocal<UserSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_USER_SETTINGS);
+    const local = getLocal<UserSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_USER_SETTINGS);
+    return {
+      ...DEFAULT_USER_SETTINGS,
+      ...local,
+    };
+  },
+
+  fetchSettingsFromCloud: async (): Promise<UserSettings> => {
+    const local = getLocal<UserSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_USER_SETTINGS);
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('id', 'default_user')
+          .maybeSingle();
+
+        if (!error && data) {
+          const merged: UserSettings = {
+            ...DEFAULT_USER_SETTINGS,
+            ...local,
+            ...data,
+            whatsapp_notification_types: data.whatsapp_notification_types || local.whatsapp_notification_types || DEFAULT_USER_SETTINGS.whatsapp_notification_types,
+          };
+          setLocal(STORAGE_KEYS.SETTINGS, merged);
+          return merged;
+        }
+      } catch (err) {
+        console.warn('Supabase settings fetch error, using local/env:', err);
+      }
+    }
+    return {
+      ...DEFAULT_USER_SETTINGS,
+      ...local,
+    };
   },
 
   updateSettings: (updates: Partial<UserSettings>): UserSettings => {
@@ -595,6 +630,38 @@ export const Storage = {
   },
 
   saveSettings: async (updates: Partial<UserSettings>): Promise<UserSettings> => {
-    return Storage.updateSettings(updates);
+    const updated = Storage.updateSettings(updates);
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('user_settings').upsert(
+          {
+            id: 'default_user',
+            theme: updated.theme,
+            in_app_notifications: updated.in_app_notifications,
+            notify_interview: updated.notify_interview,
+            notify_deadline: updated.notify_deadline,
+            notify_followup: updated.notify_followup,
+            notify_expired: updated.notify_expired,
+            deadline_reminder_days: updated.deadline_reminder_days,
+            interview_reminder_hours: updated.interview_reminder_hours,
+            whatsapp_enabled: updated.whatsapp_enabled,
+            whatsapp_phone: updated.whatsapp_phone,
+            whatsapp_mode: updated.whatsapp_mode,
+            whatsapp_api_key: updated.whatsapp_api_key,
+            whatsapp_webhook_url: updated.whatsapp_webhook_url,
+            whatsapp_notifications_enabled: updated.whatsapp_notifications_enabled,
+            whatsapp_phone_number: updated.whatsapp_phone_number,
+            whatsapp_notification_types: updated.whatsapp_notification_types,
+            currency_default: updated.currency_default,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+      } catch (err) {
+        console.warn('Supabase sync user_settings error:', err);
+      }
+    }
+    return updated;
   },
 };

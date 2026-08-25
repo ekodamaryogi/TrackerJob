@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Bell,
@@ -10,6 +10,9 @@ import {
   X,
   Briefcase,
   Check,
+  Clock,
+  Settings as SettingsIcon,
+  Calendar,
 } from 'lucide-react';
 import { NavTab } from './Sidebar';
 
@@ -37,6 +40,30 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenMobileMenu,
 }) => {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  // Real-time clock tick every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format real-time clock & date
+  const formattedTime = currentTime.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const formattedDate = currentTime.toLocaleDateString('id-ID', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 
   const getPageTitle = () => {
     switch (activeTab) {
@@ -83,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
               <span>{getPageTitle()}</span>
               <span className="hidden lg:inline-block text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-cyan-400 border border-slate-200 dark:border-cyan-500/20">
-                [LIVE_STREAM]
+                [LIVE_SYNC]
               </span>
             </h2>
           </div>
@@ -113,8 +140,45 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right Actions */}
+        {/* Right Actions & Real-Time Clock */}
         <div className="flex items-center gap-2">
+          {/* Real-time Clock Widget in Navbar */}
+          <div
+            id="navbar-realtime-clock"
+            className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 text-xs shadow-xs"
+            title={`Real-time System Clock: ${formattedDate} ${formattedTime}`}
+          >
+            <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400">
+              <Clock className="w-3.5 h-3.5 animate-pulse" />
+              <span className="font-mono font-bold text-slate-800 dark:text-cyan-300 tracking-wider">
+                {formattedTime}
+              </span>
+            </div>
+            <span className="w-1 h-3 bg-slate-300 dark:bg-slate-700 rounded-full" />
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              {formattedDate}
+            </span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+
+          {/* Quick Settings Navbar Button */}
+          <button
+            id="btn-navbar-settings"
+            onClick={() => onSelectTab('settings')}
+            className={`p-2.5 rounded-xl transition-colors cursor-pointer ${
+              activeTab === 'settings'
+                ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+            title="Open Settings & WhatsApp / Supabase"
+            aria-label="Settings"
+          >
+            <SettingsIcon className="w-5 h-5" />
+          </button>
+
           {/* Notifications Button */}
           <button
             id="btn-navbar-notifications"
@@ -207,8 +271,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
+      {/* Sub-bar Real-time Clock on Tablet / Mobile */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-1 bg-slate-100/60 dark:bg-slate-950/60 border-t border-slate-200/60 dark:border-slate-800/60 text-[11px]">
+        <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 font-mono font-semibold">
+          <Clock className="w-3 h-3" />
+          <span>{formattedTime}</span>
+        </div>
+        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <span>{formattedDate}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+        </div>
+      </div>
+
       {/* Mobile Search Bar (under navbar on small screens) */}
-      <div className="px-4 pb-3 sm:hidden">
+      <div className="px-4 pb-3 pt-2 sm:hidden">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input

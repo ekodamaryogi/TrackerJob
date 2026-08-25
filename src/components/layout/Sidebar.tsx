@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Briefcase,
@@ -11,6 +11,7 @@ import {
   Sparkles,
   CheckCircle2,
   Clock,
+  Radio,
 } from 'lucide-react';
 
 export type NavTab =
@@ -39,6 +40,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeApplicationsCount,
   upcomingInterviewsCount,
 }) => {
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedTime = currentTime.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const formattedDate = currentTime.toLocaleDateString('id-ID', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
   const mainNavItems = [
     { id: 'dashboard' as NavTab, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'applications' as NavTab, label: 'Applications', icon: Briefcase },
@@ -185,6 +208,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
               );
             })}
           </nav>
+
+          {/* Real-time Clock under Settings */}
+          <div
+            id="sidebar-realtime-clock"
+            className="mt-3 p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs"
+          >
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="font-mono text-[10px] uppercase tracking-wider flex items-center gap-1 text-cyan-400">
+                <Clock className="w-3 h-3 text-cyan-400 animate-pulse" /> LIVE_CLOCK
+              </span>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            </div>
+            <div className="font-mono font-bold text-base text-white tracking-widest text-center py-0.5 bg-slate-900/90 rounded-lg border border-slate-800">
+              {formattedTime}
+            </div>
+            <div className="text-[11px] text-slate-400 text-center mt-1 font-medium">
+              {formattedDate}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -111,7 +111,7 @@ function MainApp() {
         Storage.getInterviews(),
         Storage.getDocuments(),
         Storage.getEvents(),
-        Storage.getSettings(),
+        Storage.fetchSettingsFromCloud(),
       ]);
 
       setApplications(apps);

@@ -7,6 +7,16 @@ import {
   UserSettings,
 } from '../types';
 
+const envFonnteKey = (
+  (import.meta as any).env?.VITE_FONNTE_API_KEY ||
+  (import.meta as any).env?.VITE_WHATSAPP_API_KEY ||
+  ''
+).trim();
+
+const envPhone = ((import.meta as any).env?.VITE_WHATSAPP_PHONE || '').trim();
+const envMode = ((import.meta as any).env?.VITE_WHATSAPP_MODE || '').trim();
+const envWebhook = ((import.meta as any).env?.VITE_WHATSAPP_WEBHOOK_URL || '').trim();
+
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   theme: 'system',
   in_app_notifications: true,
@@ -14,9 +24,14 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   notify_deadline: true,
   notify_followup: true,
   notify_expired: true,
+  deadline_reminder_days: 3,
+  interview_reminder_hours: 24,
   whatsapp_enabled: true,
-  whatsapp_phone: '+6281234567890',
-  whatsapp_mode: 'click_to_chat',
+  whatsapp_phone: envPhone || '+6281234567890',
+  whatsapp_phone_number: envPhone || '+6281234567890',
+  whatsapp_mode: (envMode as any) || (envFonnteKey ? 'webhook_fonnte' : 'click_to_chat'),
+  whatsapp_api_key: envFonnteKey || '',
+  whatsapp_webhook_url: envWebhook || '',
   whatsapp_notification_types: {
     interview: true,
     deadline: true,
@@ -24,7 +39,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     expired: true,
     status_change: true,
   },
-  currency_default: 'USD',
+  currency_default: 'IDR',
 };
 
 export const INITIAL_APPLICATIONS: JobApplication[] = [
