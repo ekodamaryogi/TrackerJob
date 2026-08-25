@@ -26,18 +26,18 @@ interface PipelineViewProps {
   onOpenAddModal: () => void;
 }
 
-const PIPELINE_COLUMNS: { id: ApplicationStatus; title: string; color: string }[] = [
-  { id: 'Wishlist', title: 'Wishlist', color: 'border-t-slate-400' },
-  { id: 'Applied', title: 'Applied', color: 'border-t-blue-500' },
-  { id: 'Screening', title: 'Screening', color: 'border-t-indigo-500' },
-  { id: 'Interview', title: 'Interview', color: 'border-t-amber-500' },
-  { id: 'Technical Test', title: 'Technical Test', color: 'border-t-purple-500' },
-  { id: 'HR Interview', title: 'HR Interview', color: 'border-t-orange-500' },
-  { id: 'Offer', title: 'Offer', color: 'border-t-emerald-500' },
-  { id: 'Accepted', title: 'Accepted', color: 'border-t-teal-500' },
-  { id: 'Rejected', title: 'Rejected', color: 'border-t-rose-500' },
-  { id: 'Withdrawn', title: 'Withdrawn', color: 'border-t-zinc-400' },
-  { id: 'Expired', title: 'Expired', color: 'border-t-amber-700' },
+const PIPELINE_COLUMNS: { id: ApplicationStatus; title: string; color: string; neonGlow: string }[] = [
+  { id: 'Wishlist', title: 'Wishlist', color: 'border-t-slate-400', neonGlow: 'hover:border-slate-400' },
+  { id: 'Applied', title: 'Applied', color: 'border-t-cyan-500', neonGlow: 'hover:border-cyan-400 hover:shadow-[0_0_12px_rgba(6,182,212,0.25)]' },
+  { id: 'Screening', title: 'Screening', color: 'border-t-indigo-500', neonGlow: 'hover:border-indigo-400 hover:shadow-[0_0_12px_rgba(99,102,241,0.25)]' },
+  { id: 'Interview', title: 'Interview', color: 'border-t-amber-500', neonGlow: 'hover:border-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.25)]' },
+  { id: 'Technical Test', title: 'Technical Test', color: 'border-t-purple-500', neonGlow: 'hover:border-purple-400 hover:shadow-[0_0_12px_rgba(168,85,247,0.25)]' },
+  { id: 'HR Interview', title: 'HR Interview', color: 'border-t-orange-500', neonGlow: 'hover:border-orange-400 hover:shadow-[0_0_12px_rgba(249,115,22,0.25)]' },
+  { id: 'Offer', title: 'Offer', color: 'border-t-emerald-400', neonGlow: 'hover:border-emerald-400 hover:shadow-[0_0_12px_rgba(52,211,153,0.3)]' },
+  { id: 'Accepted', title: 'Accepted', color: 'border-t-teal-400', neonGlow: 'hover:border-teal-400 hover:shadow-[0_0_12px_rgba(45,212,191,0.3)]' },
+  { id: 'Rejected', title: 'Rejected', color: 'border-t-rose-500', neonGlow: 'hover:border-rose-400 hover:shadow-[0_0_12px_rgba(251,113,133,0.25)]' },
+  { id: 'Withdrawn', title: 'Withdrawn', color: 'border-t-zinc-500', neonGlow: 'hover:border-zinc-400' },
+  { id: 'Expired', title: 'Expired', color: 'border-t-amber-700', neonGlow: 'hover:border-amber-600' },
 ];
 
 export const PipelineView: React.FC<PipelineViewProps> = ({
@@ -129,9 +129,9 @@ export const PipelineView: React.FC<PipelineViewProps> = ({
               onDrop={(e) => handleDrop(e, col.id)}
               className={`w-72 shrink-0 rounded-2xl bg-slate-100/70 dark:bg-slate-900/60 border-t-4 ${
                 col.color
-              } border border-slate-200/80 dark:border-slate-800 flex flex-col max-h-[80vh] transition-all ${
+              } ${col.neonGlow} border border-slate-200/80 dark:border-slate-800 flex flex-col max-h-[80vh] transition-all ${
                 isOver
-                  ? 'ring-2 ring-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-md'
+                  ? 'ring-2 ring-cyan-500 bg-cyan-50/40 dark:bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
                   : ''
               }`}
             >

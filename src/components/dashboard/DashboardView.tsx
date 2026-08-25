@@ -140,21 +140,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div id="dashboard-view" className="space-y-6 pb-12">
-      {/* Top Banner / Welcome Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-slate-800">
-        <div>
+      {/* Top Banner / Welcome Action with Cyber Grid */}
+      <div className="relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-lg border border-cyan-500/30 cyber-banner-grid">
+        {/* Subtle Neon Top Edge */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-400 via-indigo-500 to-fuchsia-500" />
+        
+        <div className="relative z-10">
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
-              Personal Search Overview
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-[0_0_8px_rgba(6,182,212,0.25)]">
+              // SYS_MONITOR: ACTIVE
             </span>
-            <span className="text-xs text-slate-400">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+            <span className="text-xs text-slate-400 font-mono">
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-            {metrics.active > 0
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>{metrics.active > 0
               ? `You have ${metrics.active} active job application${metrics.active > 1 ? 's' : ''}`
-              : 'Your job search tracker is ready'}
+              : 'Your job search tracker is ready'}</span>
           </h2>
           <p className="text-sm text-slate-300 mt-1">
             {metrics.offers > 0
@@ -165,39 +168,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 relative z-10">
           <button
             id="btn-dashboard-view-pipeline"
             onClick={() => onNavigateToTab('pipeline')}
-            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium border border-slate-700 transition-colors"
+            className="px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 text-sm font-medium border border-slate-700 hover:border-cyan-500/50 hover:shadow-[0_0_10px_rgba(6,182,212,0.2)] transition-all cursor-pointer font-mono"
           >
-            View Pipeline
+            Pipeline [Kanban]
           </button>
           <button
             id="btn-dashboard-add-app"
             onClick={onOpenAddModal}
-            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-950/40 transition-colors flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-fuchsia-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-fuchsia-500 active:scale-95 text-white text-sm font-semibold shadow-md shadow-cyan-950/40 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2 cursor-pointer border border-cyan-400/30"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-cyan-200" />
             <span>Add Application</span>
           </button>
         </div>
       </div>
 
-      {/* Primary Statistic Cards */}
+      {/* Primary Statistic Cards with Cyber Top Neon Strips */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
         {/* Total */}
         <div
           onClick={() => onNavigateToTab('applications')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-indigo-500/50 transition-all cursor-pointer"
+          className="cyber-card-cyan bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-cyan-500/60 hover:shadow-[0_0_14px_rgba(6,182,212,0.2)] transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total</span>
-            <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">[TOTAL]</span>
+            <div className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400">
               <Briefcase className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-2">
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-2 group-hover:text-cyan-400 transition-colors">
             {metrics.total}
           </p>
           <span className="text-[11px] text-slate-400 mt-1 block">All applications</span>
@@ -206,15 +209,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Active */}
         <div
           onClick={() => onNavigateToTab('pipeline')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-blue-500/50 transition-all cursor-pointer"
+          className="cyber-card-cyan bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-cyan-500/60 hover:shadow-[0_0_14px_rgba(6,182,212,0.2)] transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Active</span>
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+            <span className="text-xs font-mono font-semibold text-cyan-600 dark:text-cyan-400">[ACTIVE]</span>
+            <div className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
+          <p className="text-2xl sm:text-3xl font-bold text-cyan-600 dark:text-cyan-400 mt-2">
             {metrics.active}
           </p>
           <span className="text-[11px] text-slate-400 mt-1 block">In progress</span>
@@ -223,11 +226,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Interviews */}
         <div
           onClick={() => onNavigateToTab('calendar')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-amber-500/50 transition-all cursor-pointer"
+          className="cyber-card-amber bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-amber-500/60 hover:shadow-[0_0_14px_rgba(245,158,11,0.2)] transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-              Interviews
+            <span className="text-xs font-mono font-semibold text-amber-600 dark:text-amber-400">
+              [ROUNDS]
             </span>
             <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
               <TrendingUp className="w-4 h-4" />
@@ -242,11 +245,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Offers */}
         <div
           onClick={() => onNavigateToTab('pipeline')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-emerald-500/50 transition-all cursor-pointer"
+          className="cyber-card-emerald bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-emerald-500/60 hover:shadow-[0_0_14px_rgba(16,185,129,0.2)] transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              Offers
+            <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+              [OFFERS]
             </span>
             <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
               <Trophy className="w-4 h-4" />
@@ -261,10 +264,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Accepted */}
         <div
           onClick={() => onNavigateToTab('pipeline')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-teal-500/50 transition-all cursor-pointer"
+          className="cyber-card-emerald bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-teal-500/60 hover:shadow-[0_0_14px_rgba(20,184,166,0.2)] transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">Accepted</span>
+            <span className="text-xs font-mono font-semibold text-teal-600 dark:text-teal-400">[SIGNED]</span>
             <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -278,10 +281,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Rejected */}
         <div
           onClick={() => onNavigateToTab('pipeline')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-rose-500/50 transition-all cursor-pointer"
+          className="cyber-card-magenta bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-rose-500/60 hover:shadow-[0_0_14px_rgba(244,63,94,0.2)] transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">Rejected</span>
+            <span className="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400">[REJECTED]</span>
             <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
               <XCircle className="w-4 h-4" />
             </div>
@@ -295,10 +298,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Expired */}
         <div
           onClick={() => onNavigateToTab('pipeline')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-amber-600/50 transition-all cursor-pointer col-span-2 sm:col-span-1"
+          className="cyber-card-amber bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs hover:border-amber-600/60 transition-all cursor-pointer col-span-2 sm:col-span-1 group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-700 dark:text-amber-500">Expired</span>
+            <span className="text-xs font-mono font-semibold text-amber-700 dark:text-amber-500">[EXPIRED]</span>
             <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
               <AlertTriangle className="w-4 h-4" />
             </div>
@@ -310,42 +313,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Secondary Conversion / Rate Metrics */}
+      {/* Secondary Conversion / Rate Metrics with Glowing Progress Bars */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Response Rate</span>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-cyan-500/40 transition-colors">
+          <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">Response Rate</span>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-bold text-slate-900 dark:text-white">
+            <span className="text-xl font-bold text-slate-900 dark:text-cyan-300">
               {metrics.responseRate}%
             </span>
             <span className="text-xs text-slate-400">progressed past applied</span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
             <div
-              className="bg-indigo-600 h-full rounded-full transition-all"
+              className="bg-gradient-to-r from-cyan-500 to-indigo-500 h-full rounded-full transition-all shadow-[0_0_8px_rgba(6,182,212,0.5)]"
               style={{ width: `${Math.min(metrics.responseRate, 100)}%` }}
             />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Interview Rate</span>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-amber-500/40 transition-colors">
+          <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">Interview Rate</span>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-bold text-slate-900 dark:text-white">
+            <span className="text-xl font-bold text-slate-900 dark:text-amber-400">
               {metrics.interviewRate}%
             </span>
             <span className="text-xs text-slate-400">reached interview stage</span>
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
             <div
-              className="bg-amber-500 h-full rounded-full transition-all"
+              className="bg-gradient-to-r from-amber-500 to-orange-500 h-full rounded-full transition-all shadow-[0_0_8px_rgba(245,158,11,0.5)]"
               style={{ width: `${Math.min(metrics.interviewRate, 100)}%` }}
             />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Offer Conversion</span>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-emerald-500/40 transition-colors">
+          <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">Offer Conversion</span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
               {metrics.offerRate}%
@@ -354,22 +357,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
             <div
-              className="bg-emerald-500 h-full rounded-full transition-all"
+              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all shadow-[0_0_8px_rgba(16,185,129,0.5)]"
               style={{ width: `${Math.min(metrics.offerRate, 100)}%` }}
             />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Velocity</span>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-fuchsia-500/40 transition-colors">
+          <span className="text-xs font-mono font-semibold text-slate-500 dark:text-slate-400">Velocity</span>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-xl font-bold text-slate-900 dark:text-white">
+            <span className="text-xl font-bold text-slate-900 dark:text-fuchsia-300">
               +{metrics.thisMonth}
             </span>
             <span className="text-xs text-slate-400">applied this month</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-2">
-            <span>+{metrics.thisWeek} in last 7 days</span>
+            <span className="text-cyan-400">+{metrics.thisWeek}</span> in last 7 days
           </div>
         </div>
       </div>

@@ -62,8 +62,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header
       id="app-navbar"
-      className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors"
+      className="sticky top-0 z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors relative"
     >
+      {/* Subtle Bottom Laser Line */}
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent pointer-events-none" />
+
       <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16 gap-3">
         {/* Mobile Menu & Title */}
         <div className="flex items-center gap-3">
@@ -77,23 +80,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white capitalize">
-              {getPageTitle()}
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
+              <span>{getPageTitle()}</span>
+              <span className="hidden lg:inline-block text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-cyan-400 border border-slate-200 dark:border-cyan-500/20">
+                [LIVE_STREAM]
+              </span>
             </h2>
           </div>
         </div>
 
         {/* Global Search Bar */}
         <div className="flex-1 max-w-md hidden sm:block mx-4">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="relative group">
+            <Search className="w-4 h-4 text-slate-400 group-focus-within:text-cyan-400 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               id="global-search-input"
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search company, position, or keywords..."
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 focus:border-cyan-500 focus:shadow-[0_0_12px_rgba(6,182,212,0.25)] focus:bg-white dark:focus:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all"
             />
             {searchQuery && (
               <button
@@ -119,7 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Bell className="w-5 h-5" />
             {unreadNotifsCount > 0 && (
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
+              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-[0_0_6px_#f43f5e]" />
             )}
           </button>
 
@@ -133,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Toggle theme"
             >
               {theme === 'dark' ? (
-                <Moon className="w-5 h-5 text-indigo-400" />
+                <Moon className="w-5 h-5 text-cyan-400 drop-shadow-[0_0_6px_rgba(6,182,212,0.6)]" />
               ) : theme === 'light' ? (
                 <Sun className="w-5 h-5 text-amber-500" />
               ) : (
@@ -158,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="flex items-center gap-2">
                       <Sun className="w-3.5 h-3.5 text-amber-500" /> Light
                     </span>
-                    {theme === 'light' && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                    {theme === 'light' && <Check className="w-3.5 h-3.5 text-cyan-500" />}
                   </button>
                   <button
                     onClick={() => {
@@ -168,9 +174,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/60"
                   >
                     <span className="flex items-center gap-2">
-                      <Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark
+                      <Moon className="w-3.5 h-3.5 text-cyan-400" /> Dark
                     </span>
-                    {theme === 'dark' && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                    {theme === 'dark' && <Check className="w-3.5 h-3.5 text-cyan-400" />}
                   </button>
                   <button
                     onClick={() => {
@@ -182,20 +188,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="flex items-center gap-2">
                       <Monitor className="w-3.5 h-3.5 text-slate-500" /> System
                     </span>
-                    {theme === 'system' && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                    {theme === 'system' && <Check className="w-3.5 h-3.5 text-cyan-500" />}
                   </button>
                 </div>
               </>
             )}
           </div>
 
-          {/* Quick Add Button (Desktop & Mobile) */}
+          {/* Quick Add Button (Desktop & Mobile) with Cyberpunk Gradient */}
           <button
             id="btn-navbar-add-app"
             onClick={onOpenAddModal}
-            className="flex items-center gap-1.5 py-2 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 py-2 px-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium text-sm shadow-sm hover:shadow-[0_0_12px_rgba(6,182,212,0.35)] transition-all cursor-pointer border border-cyan-400/30"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-cyan-200" />
             <span className="hidden sm:inline">Add Job</span>
           </button>
         </div>
