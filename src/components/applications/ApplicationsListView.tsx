@@ -8,14 +8,16 @@ import {
   DollarSign,
   ExternalLink,
   ChevronRight,
+  ChevronDown,
   Edit,
   Trash2,
   Eye,
   ArrowUpDown,
   AlertTriangle,
+  Check,
 } from 'lucide-react';
 import { JobApplication, ApplicationStatus } from '../../types';
-import { StatusBadge } from '../common/StatusBadge';
+import { StatusBadge, getStatusConfig } from '../common/StatusBadge';
 import { formatDate, formatSalaryRange } from '../../lib/notifications';
 
 interface ApplicationsListViewProps {
@@ -24,7 +26,22 @@ interface ApplicationsListViewProps {
   onEditApplication: (app: JobApplication) => void;
   onDeleteApplication: (id: string) => void;
   onOpenAddModal: () => void;
+  onUpdateStatus?: (id: string, status: ApplicationStatus) => void;
 }
+
+const ALL_STATUSES: ApplicationStatus[] = [
+  'Wishlist',
+  'Applied',
+  'Screening',
+  'Interview',
+  'Technical Test',
+  'HR Interview',
+  'Offer',
+  'Accepted',
+  'Rejected',
+  'Withdrawn',
+  'Expired',
+];
 
 export const ApplicationsListView: React.FC<ApplicationsListViewProps> = ({
   applications,
@@ -32,11 +49,13 @@ export const ApplicationsListView: React.FC<ApplicationsListViewProps> = ({
   onEditApplication,
   onDeleteApplication,
   onOpenAddModal,
+  onUpdateStatus,
 }) => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<'date' | 'company' | 'status' | 'deadline'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [openStatusMenuId, setOpenStatusMenuId] = useState<string | null>(null);
 
   const filteredApplications = useMemo(() => {
     return applications
@@ -230,14 +249,76 @@ export const ApplicationsListView: React.FC<ApplicationsListViewProps> = ({
                       </div>
                     </td>
 
-                    {/* Status */}
-                    <td className="py-3.5 px-4">
-                      <StatusBadge status={app.status} size="sm" />
-                      {isExpired && app.status !== 'Expired' && (
-                        <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold block mt-0.5">
-                          (Expired)
-                        </span>
-                      )}
+                    {/* Status with Direct Change Dropdown */}
+                    <td className="py-3.5 px-4 relative" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative inline-block text-left">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenStatusMenuId(openStatusMenuId === app.id ? null : app.id);
+                          }}
+                          className="group/btn flex items-center gap-1.5 focus:outline-none rounded-full transition-transform active:scale-95 cursor-pointer"
+                          title="Click to quickly change status directly"
+                        >
+                          <StatusBadge status={app.status} size="sm" />
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover/btn:text-cyan-500 transition-colors" />
+                        </button>
+
+                        {isExpired && app.status !== 'Expired' && (
+                          <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold block mt-0.5">
+                            (Expired)
+                          </span>
+                        )}
+
+                        {openStatusMenuId === app.id && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-40"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenStatusMenuId(null);
+                              }}
+                            />
+                            <div
+                              className="absolute left-0 top-full mt-1.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 py-1.5 max-h-64 overflow-y-auto"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase font-mono border-b border-slate-100 dark:border-slate-800">
+                                Change Status
+                              </div>
+                              {ALL_STATUSES.map((st) => {
+                                const cfg = getStatusConfig(st);
+                                const isCurrent = app.status === st;
+                                return (
+                                  <button
+                                    key={st}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onUpdateStatus) {
+                                        onUpdateStatus(app.id, st);
+                                      }
+                                      setOpenStatusMenuId(null);
+                                    }}
+                                    className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors cursor-pointer ${
+                                      isCurrent
+                                        ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 font-bold'
+                                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+                                      <span>{st}</span>
+                                    </div>
+                                    {isCurrent && <Check className="w-3.5 h-3.5 text-cyan-500" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </td>
 
                     {/* Applied Date */}
@@ -343,7 +424,68 @@ export const ApplicationsListView: React.FC<ApplicationsListViewProps> = ({
                     </p>
                   </div>
                 </div>
-                <StatusBadge status={app.status} size="sm" />
+                <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenStatusMenuId(openStatusMenuId === `mobile-${app.id}` ? null : `mobile-${app.id}`);
+                    }}
+                    className="flex items-center gap-1 focus:outline-none rounded-full cursor-pointer"
+                    title="Change Status"
+                  >
+                    <StatusBadge status={app.status} size="sm" />
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                  </button>
+
+                  {openStatusMenuId === `mobile-${app.id}` && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenStatusMenuId(null);
+                        }}
+                      />
+                      <div
+                        className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 py-1.5 max-h-56 overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase font-mono border-b border-slate-100 dark:border-slate-800">
+                          Change Status
+                        </div>
+                        {ALL_STATUSES.map((st) => {
+                          const cfg = getStatusConfig(st);
+                          const isCurrent = app.status === st;
+                          return (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onUpdateStatus) {
+                                  onUpdateStatus(app.id, st);
+                                }
+                                setOpenStatusMenuId(null);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors cursor-pointer ${
+                                isCurrent
+                                  ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 font-bold'
+                                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
+                                <span>{st}</span>
+                              </div>
+                              {isCurrent && <Check className="w-3.5 h-3.5 text-cyan-500" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400">

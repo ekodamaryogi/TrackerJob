@@ -493,6 +493,7 @@ function MainApp() {
                     setEditingApp(null);
                     setIsAddAppModalOpen(true);
                   }}
+                  onUpdateStatus={handleUpdateStatus}
                 />
               )}
 
