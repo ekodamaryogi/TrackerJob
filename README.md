@@ -5,8 +5,9 @@ Selamat datang di repositori **Personal Job Application Tracker**. Aplikasi ini 
 ---
 
 ## 📚 Dokumen Panduan:
+- 🌐 **[Panduan Integrasi & Deployment ke Vercel (Klik di sini)](#-langkah-5-menghubungkan-ke-aplikasi--deployment-vercel-permanen)** - Cara set Supabase Environment Variables di Vercel agar otomatis terhubung di semua perangkat/pengunjung tanpa perlu input manual di browser.
 - 📱 **[Panduan Integrasi Notifikasi WhatsApp (README_WHATSAPP.md)](./README_WHATSAPP.md)** - Konfigurasi kirim pesan WhatsApp otomatis, gateway Fonnte, Webhook, dan pemicu interview.
-- 🗄️ **[Panduan Database Cloud Supabase (Lihat di bawah)](#-panduan-integrasi-supabase)** - Langkah setup PostgreSQL & File Storage di Supabase (Schema v2.1).
+- 🗄️ **[Panduan Database Cloud Supabase (Lihat di bawah)](#-panduan-integrasi-supabase-schema-v21)** - Langkah setup PostgreSQL & File Storage di Supabase (Schema v2.1).
 
 ---
 
@@ -43,9 +44,10 @@ Panduan ini menjamin integrasi database **Supabase** berhasil 100% tanpa error t
 3. [Langkah 2: Menjalankan Database Schema v2.1 (SQL)](#langkah-2-menjalankan-database-schema-v21-sql)
 4. [Langkah 3: Konfigurasi Storage Bucket (CV & Dokumen)](#langkah-3-konfigurasi-storage-bucket-cv--dokumen)
 5. [Langkah 4: Mendapatkan URL & Anon Key Supabase](#langkah-4-mendapatkan-url--anon-key-supabase)
-6. [Langkah 5: Menghubungkan ke Aplikasi (2 Pilihan Cara)](#langkah-5-menghubungkan-ke-aplikasi-2-pilihan-cara)
-   - [Opsi A: Melalui Menu Pengaturan di UI (Instan)](#opsi-a-melalui-menu-pengaturan-di-ui-instan)
-   - [Opsi B: Melalui Environment Variables (`.env`)](#opsi-b-melalui-environment-variables-env)
+6. [Langkah 5: Menghubungkan ke Aplikasi & Deployment Vercel (Permanen)](#-langkah-5-menghubungkan-ke-aplikasi--deployment-vercel-permanen)
+   - [🌟 Opsi 1: Deploy ke Vercel (Otomatis & Permanen untuk Semua Pengunjung)](#-opsi-1-deploy-ke-vercel-otomatis--permanen-untuk-semua-pengunjung)
+   - [💻 Opsi 2: Local Development via file `.env`](#-opsi-2-local-development-via-file-env)
+   - [📱 Opsi 3: Melalui Menu Pengaturan UI (Hanya Berlaku di Browser Lokal Tersebut)](#-opsi-3-melalui-menu-pengaturan-ui-hanya-berlaku-di-browser-lokal-tersebut)
 7. [Langkah 6: Verifikasi Koneksi & Sinkronisasi Data](#langkah-6-verifikasi-koneksi--sinkronisasi-data)
 8. [Struktur Relasi Tabel Supabase](#-struktur-relasi-tabel-supabase)
 9. [Panduan Mengatasi Masalah (Troubleshooting)](#-panduan-mengatasi-masalah-troubleshooting)
@@ -54,7 +56,7 @@ Panduan ini menjamin integrasi database **Supabase** berhasil 100% tanpa error t
 
 ## 1. Prasyarat
 - Akun [Supabase](https://supabase.com) (Gratis).
-- Browser untuk mengakses dashboard Supabase.
+- Akun [Vercel](https://vercel.com) atau [GitHub](https://github.com) untuk hosting/deployment.
 
 ---
 
@@ -116,38 +118,87 @@ Schema di `supabase_schema.sql` sudah otomatis mendaftarkan bucket `application-
 
 ---
 
-## Langkah 5: Menghubungkan ke Aplikasi (2 Pilihan Cara)
+## 🌐 Langkah 5: Menghubungkan ke Aplikasi & Deployment Vercel (Permanen)
 
-### Opsi A: Melalui Menu Pengaturan di UI (Instan & Direkomendasikan)
-1. Buka aplikasi Job Application Tracker di browser.
-2. Klik tab **Settings** (⚙️) pada navigasi atas.
-3. Pilih sub-tab **Supabase Cloud**.
-4. Masukkan:
-   - **Supabase Project URL**: Tempelkan URL dari Langkah 4.
-   - **Supabase Anon Public API Key**: Tempelkan Anon Key dari Langkah 4.
-5. Klik tombol **Test Connection** untuk memverifikasi kesehatan koneksi & tabel.
-6. Klik **Simpan & Hubungkan**.
-7. Status badge akan langsung berubah menjadi hijau: **Connected (Cloud Active)**!
+### 💡 Penjelasan Perbedaan Metode:
+- **Jika memasukkan via tab Settings di browser (Opsi 3)**: Nilai hanya tersimpan di `localStorage` browser tersebut. Jika Anda membuka website dari browser lain, laptop lain, atau mode incognito, Anda harus memasukkannya ulang.
+- **Jika memasukkan ke Vercel Environment Variables (Opsi 1 - Sangat Direkomendasikan)**: Nilai `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` akan **di-bundle langsung ke dalam build aplikasi**. Setiap pengguna/perangkat yang membuka URL Vercel Anda akan **langsung otomatis terhubung ke Supabase** tanpa perlu input apapun lagi!
 
-### Opsi B: Melalui Environment Variables (`.env`)
-Jika Anda ingin menyetel default secara global:
+---
+
+### 🌟 Opsi 1: Deploy ke Vercel (Otomatis & Permanen untuk Semua Pengunjung)
+
+Gunakan cara ini saat men-deploy aplikasi ke [Vercel](https://vercel.com):
+
+#### Cara A: Melalui Dashboard Vercel (Import GitHub)
+1. Push repository proyek ini ke akun GitHub Anda.
+2. Buka [Vercel Dashboard](https://vercel.com/dashboard) dan login.
+3. Klik tombol **Add New...** > **Project**.
+4. Pilih repository GitHub Anda, lalu klik **Import**.
+5. Di bagian **Configure Project**:
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+6. Buka dropdown **Environment Variables**, tambahkan 2 variabel berikut:
+   - **Name**: `VITE_SUPABASE_URL`  
+     **Value**: Masukkan Project URL Supabase Anda (misal: `https://abcdefghijklmnop.supabase.co`)
+   - **Name**: `VITE_SUPABASE_ANON_KEY`  
+     **Value**: Masukkan Anon Public Key Supabase Anda (`eyJhbGciOiJI...`)
+7. Klik tombol **Deploy**.
+8. Setelah proses build selesai (sekitar 30 detik), buka URL Vercel Anda (`https://nama-proyek.vercel.app`).
+9. **Selesai!** Aplikasi di domain Vercel Anda sekarang otomatis terhubung ke database Supabase untuk semua pengunjung di perangkat manapun.
+
+#### Cara B: Jika Project Sudah Terlanjur Di-deploy ke Vercel (Update Environment Variables)
+Jika Anda sudah memiliki project yang berjalan di Vercel:
+1. Buka project Anda di dashboard Vercel.
+2. Masuk ke tab **Settings** (di menu atas project Vercel) > pilih **Environment Variables** di sidebar kiri.
+3. Tambahkan:
+   - `VITE_SUPABASE_URL` = URL Project Supabase Anda
+   - `VITE_SUPABASE_ANON_KEY` = Anon Public Key Supabase Anda
+   - Centang opsi: **Production**, **Preview**, dan **Development**.
+4. Klik **Save**.
+5. ⚠️ **PENTING (Trigger Re-deploy):** Karena Vite membaca variabel `VITE_` pada waktu build (*build time*), Anda harus melakukan re-deploy:
+   - Masuk ke tab **Deployments** di Vercel.
+   - Klik titik tiga (`...`) pada deployment teratas > pilih **Redeploy**.
+   - Tunggu proses deploy selesai.
+
+> ℹ️ File `vercel.json` sudah disediakan di root repository ini dengan konfigurasi single-page rewrite agar rute URL tidak error 404 saat direfresh.
+
+---
+
+### 💻 Opsi 2: Local Development via file `.env`
+
+Untuk menjalankan aplikasi di komputer lokal (`localhost:3000` / `npm run dev`):
 1. Buat file `.env` di root folder proyek (salin dari `.env.example`):
    ```bash
    cp .env.example .env
    ```
-2. Buka `.env` dan masukkan kredensial Supabase Anda:
+2. Buka file `.env` dan masukkan kredensial Supabase Anda:
    ```env
    VITE_SUPABASE_URL="https://YOUR_PROJECT_ID.supabase.co"
    VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_PUBLIC_KEY"
    ```
-3. Restart development server (`npm run dev`).
+3. Restart development server:
+   ```bash
+   npm run dev
+   ```
+
+---
+
+### 📱 Opsi 3: Melalui Menu Pengaturan UI (Hanya Berlaku di Browser Lokal Tersebut)
+
+Gunakan cara ini untuk pengujian cepat di satu perangkat tanpa mengubah environment variables:
+1. Buka aplikasi Job Application Tracker di browser.
+2. Klik tab **Settings** (⚙️) pada navigasi atas > pilih sub-tab **Supabase Cloud**.
+3. Masukkan **Supabase Project URL** dan **Supabase Anon Public API Key**.
+4. Klik tombol **Test Connection** > lalu klik **Simpan & Hubungkan**.
 
 ---
 
 ## Langkah 6: Verifikasi Koneksi & Sinkronisasi Data
 
-1. **Uji Koneksi:** Di tab **Settings > Supabase Cloud**, klik **Test Connection**. Jika sukses, akan muncul pesan hijau:
-   > *"Koneksi ke Supabase berhasil dan seluruh tabel siap digunakan!"*
+1. **Uji Koneksi:** Di tab **Settings > Supabase Cloud**, klik **Test Connection**. Jika sukses, akan muncul badge hijau:
+   > **Connected (Cloud Active)** — *"Koneksi ke Supabase berhasil dan seluruh tabel siap digunakan!"*
 2. **Sinkronisasi Data Lokal ke Cloud:**
    - Klik tombol **Upload Data Lokal ke Cloud**.
    - Sistem akan mengunggah seluruh lamaran, interview, dokumen, dan timeline lokal yang ada ke tabel database Supabase Anda.
@@ -194,13 +245,14 @@ Jika Anda ingin menyetel default secara global:
 
 | Gejala / Pesan Error | Penyebab | Solusi |
 | :--- | :--- | :--- |
+| **Buka di HP / browser lain harus isi URL & Key lagi** | Menggunakan Opsi 3 (LocalStorage browser). | Masukkan `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` ke **Vercel Environment Variables** (Langkah 5 Opsi 1) lalu lakukan **Redeploy**. |
 | **`relation "applications" does not exist` (42P01)** | Tabel belum dibuat di Supabase. | Salin seluruh isi file `supabase_schema.sql` dan jalankan di **SQL Editor** Supabase. |
 | **`invalid input syntax for type uuid: "app-001"` (22P02)** | Kolom ID menggunakan tipe UUID kaku, bukan TEXT. | Jalankan script `supabase_schema.sql` terbaru (v2.1) yang sudah menggunakan tipe `TEXT PRIMARY KEY` fleksibel. |
 | **`new row violates row-level security policy` (42501)** | RLS aktif namun belum mengizinkan role `anon`. | Jalankan bagian Section 5 di `supabase_schema.sql` untuk mengaktifkan policy akses anon dan authenticated. |
 | **`policy "..." already exists` (42710)** | Policy sudah ada dari eksekusi sebelumnya. | `supabase_schema.sql` v2.1 sudah menyertakan `DROP POLICY IF EXISTS` sebelum setiap `CREATE POLICY`. Jalankan script terbaru. |
 | **Upload Dokumen / CV gagal disimpan ke Storage** | Storage bucket belum dibuat atau belum Public. | Pastikan bucket `application-documents` dibuat dengan toggle **Public bucket** aktif di menu Storage Supabase. |
-| **Status tetap 'Offline' di aplikasi** | URL atau Anon Key belum dimasukkan / salah format. | Pastikan URL dimulai dengan `https://` (tanpa garis miring `/` di akhir) dan simpan kredensial di tab **Settings > Supabase Cloud**. |
+| **Status tetap 'Offline' di Vercel setelah tambah env** | Variabel ditambahkan setelah build tanpa trigger redeploy. | Masuk ke menu **Deployments** di Vercel, klik titik tiga (`...`) > **Redeploy**. |
 
 ---
 
-Selamat menggunakan **Personal Job Application Tracker** dengan sinkronisasi cloud Supabase!
+Selamat menggunakan **Personal Job Application Tracker** dengan sinkronisasi cloud Supabase & Vercel!
